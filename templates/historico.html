@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport"
+    content="width=device-width, initial-scale=1.0">
+
+    <title>Histórico</title>
+
+    <link rel="stylesheet"
+    href="{{ url_for('static', filename='style.css') }}">
+
+</head>
+
+<body>
+
+<div class="layout">
+
+    <div class="sidebar">
+
+        <h2>
+            🛍️ Loja
+        </h2>
+
+        <ul>
+
+            <li>
+                <a href="/dashboard">
+                    📊 Início
+                </a>
+            </li>
+
+            <li>
+                <a href="/produtos">
+                    📦 Produtos
+                </a>
+            </li>
+
+            <li>
+                <a href="/nova-venda">
+                    💰 Nova venda
+                </a>
+            </li>
+
+            <li>
+                <a href="/historico">
+                    🧾 Histórico
+                </a>
+            </li>
+
+            <li>
+                <a href="/relatorios">
+                    📈 Relatórios
+                </a>
+            </li>
+
+            <li>
+                <a href="/estoque">
+                    📦 Estoque
+                </a>
+            </li>
+
+            <li>
+                <a href="/lucro">
+                    💵 Lucro
+                </a>
+            </li>
+
+            <li>
+                <a href="/gestao">
+                    ⚙️ Gestão
+                </a>
+            </li>
+
+        </ul>
+
+    </div>
+
+    <div class="main">
+
+        <h1>
+            🧾 Histórico de Vendas
+        </h1>
+
+        <input
+        type="text"
+        id="pesquisa"
+        placeholder="🔍 Pesquisar venda...">
+
+        <h2>
+            💰 Total vendido:
+            R$ {{ total }}
+        </h2>
+
+        <div class="grid-produtos">
+
+            {% for venda in vendas %}
+
+                <div class="produto-item">
+
+                    <h3>
+                        🧾 Venda #{{ venda.id }}
+                    </h3>
+
+                    <div class="itens-venda">
+
+                        {% for item in venda.itens %}
+
+                            <div class="tag-item">
+
+                                <div>
+
+                                    📦 {{ item.produto }}
+                                    -
+                                    {{ item.quantidade }}x
+
+                                </div>
+
+                                <strong>
+
+                                    R$ {{ item.subtotal }}
+
+                                </strong>
+
+                                <a
+                                href="/trocar-item/{{ venda.id }}/{{ loop.index0 }}"
+                                class="botao-troca"
+
+                                onclick="return confirm('Deseja trocar este item?')">
+
+                                    🔁
+
+                                </a>
+
+                            </div>
+
+                        {% endfor %}
+
+                    </div>
+
+                    <hr>
+
+                    <strong>
+                        💰 Total:
+                        R$ {{ venda.total }}
+                    </strong>
+
+                    <span>
+                        💳 {{ venda.pagamento }}
+                    </span>
+
+                    <small>
+                        🕒 {{ venda.data }}
+                    </small>
+
+                </div>
+
+            {% endfor %}
+
+        </div>
+
+    </div>
+
+</div>
+
+<script>
+
+const pesquisa =
+document.getElementById("pesquisa")
+
+pesquisa.addEventListener("input", () => {
+
+    const valor =
+    pesquisa.value.toLowerCase()
+
+    const vendas =
+    document.querySelectorAll(".produto-item")
+
+    vendas.forEach(venda => {
+
+        const texto =
+        venda.innerText.toLowerCase()
+
+        if(texto.includes(valor)){
+
+            venda.style.display = "flex"
+
+        }
+        else{
+
+            venda.style.display = "none"
+
+        }
+
+    })
+
+})
+
+</script>
+
+</body>
+</html>

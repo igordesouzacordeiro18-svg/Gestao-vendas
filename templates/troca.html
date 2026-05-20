@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+
+    <meta charset="UTF-8">
+
+    <title>Troca</title>
+
+    <link rel="stylesheet"
+    href="{{ url_for('static', filename='style.css') }}">
+
+</head>
+
+<body>
+
+<div class="container">
+
+    <h1>🔁 Troca de Produto</h1>
+
+    <h3>
+        Produto atual:
+        {{ venda.produto }}
+    </h3>
+
+    <p>
+        Quantidade atual:
+        {{ venda.quantidade }}
+    </p>
+
+    <p>
+        Valor antigo:
+        R$ {{ venda.total }}
+    </p>
+
+    <form
+    action="/confirmar-troca/{{ venda.id }}"
+    method="POST"
+
+    onsubmit="return confirm('Confirmar troca?')">
+
+        <label>
+            Novo produto:
+        </label>
+
+        <select name="produto" required>
+
+            {% for produto in produtos %}
+
+                <option value="{{ produto.id }}">
+
+                    {{ produto.nome }}
+                    - R$ {{ produto.preco }}
+
+                </option>
+
+            {% endfor %}
+
+        </select>
+
+        <br><br>
+
+        <label>
+            Nova quantidade:
+        </label>
+
+        <input
+        type="number"
+        name="quantidade"
+        min="1"
+        value="{{ venda.quantidade }}"
+        required>
+
+        <br><br>
+
+        <label>
+            Forma de pagamento:
+        </label>
+
+        <select name="pagamento" required>
+
+            <option value="Pix">
+                Pix
+            </option>
+
+            <option value="Dinheiro">
+                Dinheiro
+            </option>
+
+            <option value="Débito">
+                Débito
+            </option>
+
+            <option value="Crédito">
+                Crédito
+            </option>
+
+        </select>
+
+        <br><br>
+
+        <button type="submit">
+
+            ✅ Confirmar Troca
+
+        </button>
+
+    </form>
+
+</div>
+
+</body>
+</html>

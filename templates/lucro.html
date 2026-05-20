@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport"
+    content="width=device-width, initial-scale=1.0">
+
+    <title>Lucro</title>
+
+    <link rel="stylesheet"
+    href="{{ url_for('static', filename='style.css') }}">
+
+</head>
+
+<body>
+
+<div class="layout">
+
+    <div class="sidebar">
+
+        <h2>
+            🛍️ Loja
+        </h2>
+
+        <ul>
+
+            <li>
+                <a href="/dashboard">
+                    📊 Início
+                </a>
+            </li>
+
+            <li>
+                <a href="/produtos">
+                    📦 Produtos
+                </a>
+            </li>
+
+            <li>
+                <a href="/nova-venda">
+                    💰 Nova venda
+                </a>
+            </li>
+
+            <li>
+                <a href="/historico">
+                    🧾 Histórico
+                </a>
+            </li>
+
+            <li>
+                <a href="/relatorios">
+                    📈 Relatórios
+                </a>
+            </li>
+
+            <li>
+                <a href="/estoque">
+                    📦 Estoque
+                </a>
+            </li>
+
+            <li>
+                <a href="/lucro">
+                    💵 Lucro
+                </a>
+            </li>
+
+            <li>
+                <a href="/gestao">
+                    ⚙️ Gestão
+                </a>
+            </li>
+
+        </ul>
+
+    </div>
+
+    <div class="main">
+
+        <h1>
+            📈 Painel de Lucro
+        </h1>
+
+        <div class="card">
+
+            <h2>
+                💰 Lucro Total
+            </h2>
+
+            <p style="font-size:40px;">
+
+                R$ {{ lucro_total }}
+
+            </p>
+
+        </div>
+
+    </div>
+
+</div>
+
+</body>
+</html>
+
+

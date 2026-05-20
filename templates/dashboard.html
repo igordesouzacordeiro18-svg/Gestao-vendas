@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport"
+    content="width=device-width, initial-scale=1.0">
+
+    <title>Sistema de Vendas</title>
+
+    <link rel="stylesheet"
+    href="{{ url_for('static', filename='style.css') }}">
+
+</head>
+
+<body>
+
+    <div class="layout">
+
+        <div class="sidebar">
+
+            <h2>🛍️ Loja</h2>
+
+            <ul>
+
+                <li>
+                    <a href="/dashboard">
+                        📊 Início
+                    </a>
+                </li>
+
+                <li>
+                    <a href="/produtos">
+                        📦 Produtos
+                    </a>
+                </li>
+
+                <li>
+                    <a href="/nova-venda">
+                        💰 Nova venda
+                    </a>
+                </li>
+
+                <li>
+                    <a href="/historico">
+                        🧾 Histórico
+                    </a>
+                </li>
+                
+
+                <li>
+                    <a href="/lucro">
+                        📈 Lucro
+                    </a>
+                </li>
+
+
+                <li>
+                    <a href="/relatorios">
+                        📊 Relatórios
+                    </a>
+                </li>
+
+                <li>
+                    <a href="/gestao">
+                        ⚙️ Gestão
+                    </a>
+                </li>
+
+
+            </ul>
+
+        </div>
+
+        <div class="main">
+
+            <h1>
+                📊 Painel de Vendas
+            </h1>
+
+            <div class="cards">
+
+                <div class="card">
+
+                    <h3>
+                        💰 Caixa Total
+                    </h3>
+
+                    <p>
+                        R$ {{ valor_total }}
+                    </p>
+
+                </div>
+
+                <div class="card">
+
+                    <h3>
+                        📦 Produtos
+                    </h3>
+
+                    <p>
+                        {{ total_produtos }}
+                    </p>
+
+                </div>
+
+                <div class="card">
+
+                    <h3>
+                        🧾 Vendas
+                    </h3>
+
+                    <p>
+                        {{ total_vendas }}
+                    </p>
+
+                </div>
+
+            </div>
+
+            <div class="acoes">
+
+                <a href="/nova-venda">
+
+                    <button>
+                        ➕ Nova Venda
+                    </button>
+
+                </a>
+
+                <a href="/produtos">
+
+                    <button>
+                        📦 Cadastrar Produto
+                    </button>
+
+                </a>
+
+            </div>
+
+            <div class="historico-recente">
+
+                <h2>
+                    🕒 Últimas vendas
+                </h2>
+
+                {% for venda in ultimas_vendas %}
+
+                    <div class="venda-recente">
+
+                        <div class="itens-venda">
+
+                        {% for item in venda.itens %}
+
+                        <div class="tag-item">
+
+                            {{ item.quantidade }}x
+                            {{ item.produto }}
+
+                            -
+                            R$ {{ item.preco }}
+
+                        </div>
+
+                    {% endfor %}
+
+                </div>
+
+                        <span>
+                            {{ venda.quantidade }}x
+                        </span>
+
+                        <span>
+                            💳 {{ venda.pagamento }}
+                        </span>
+
+                        <strong>
+                            R$ {{ venda.total }}
+                        </strong>
+
+                    </div>
+
+                {% endfor %}
+
+            </div>
+
+        </div>
+
+    </div>
+
+</body>
+</html>

@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport"
+    content="width=device-width, initial-scale=1.0">
+
+    <title>Nova Venda</title>
+
+    <link rel="stylesheet"
+    href="{{ url_for('static', filename='style.css') }}">
+
+</head>
+
+<body>
+
+<div class="container">
+
+    <h1>
+        💰 Nova Venda
+    </h1>
+
+    <div class="box-venda">
+
+        <select id="produto">
+
+            {% for produto in produtos %}
+
+                <option
+                value="{{ produto.preco }}">
+
+                    {{ produto.nome }}
+                    - R$ {{ produto.preco }}
+
+                </option>
+
+            {% endfor %}
+
+        </select>
+
+        <input
+        type="number"
+        id="quantidade"
+        placeholder="Quantidade"
+        value="1">
+
+        <button onclick="adicionarProduto()">
+
+            ➕ Adicionar
+
+        </button>
+
+    </div>
+
+    <form
+    action="/salvar-venda"
+    method="POST"
+    onsubmit="return validarVenda()">
+
+    <div class="carrinho">
+
+        <h2>
+            🛒 Carrinho
+        </h2>
+
+        <div id="lista-carrinho">
+
+        </div>
+
+        <input
+        type="hidden"
+        name="carrinho"
+        id="carrinho-input">
+
+
+        <select name="pagamento" required>
+
+            <option value="Pix">
+                Pix
+            </option>
+
+            <option value="Dinheiro">
+                Dinheiro
+            </option>
+
+            <option value="Débito">
+                Débito
+            </option>
+
+            <option value="Crédito 1x">
+                Crédito 1x
+            </option>
+
+            <option value="Crédito 2x">
+                Crédito 2x
+            </option>
+
+            <option value="Crédito 3x">
+                Crédito 3x
+            </option>
+
+            <option value="Crédito 4x">
+                Crédito 4x
+            </option>
+
+            <option value="Crédito 5x">
+                Crédito 5x
+            </option>
+
+            <option value="Crédito 6x">
+                Crédito 6x
+            </option>
+
+            <option value="Crédito 7x">
+                Crédito 7x
+            </option>
+
+            <option value="Crédito 8x">
+                Crédito 8x
+            </option>
+
+            <option value="Crédito 9x">
+                Crédito 9x
+            </option>
+
+            <option value="Crédito 10x">
+                Crédito 10x
+            </option>
+
+            <option value="Crédito 11x">
+                Crédito 11x
+            </option>
+
+            <option value="Crédito 12x">
+                Crédito 12x
+            </option>
+
+</select>
+
+
+        <h2 id="total">
+
+            Total: R$ 0
+
+        </h2>
+
+        <button
+        type="submit"
+        id="btn-finalizar"
+        disabled>
+
+            ✅ Finalizar Venda
+
+        </button>
+
+    </div>
+
+</form>
+
+</div>
+
+<script>
+
+let total = 0
+
+let carrinho = []
+
+function adicionarProduto(){
+
+    const produto =
+    document.getElementById("produto")
+
+    const nome =
+    produto.options[produto.selectedIndex].text
+
+    const preco =
+    parseFloat(produto.value)
+
+    const quantidade =
+    parseInt(
+        document.getElementById("quantidade").value
+    )
+
+    const subtotal =
+    preco * quantidade
+
+    total += subtotal
+
+    carrinho.push({
+        nome: nome,
+        preco: preco,
+        quantidade: quantidade,
+        subtotal: subtotal
+    })
+
+    document
+    .getElementById("carrinho-input")
+    .value =
+    JSON.stringify(carrinho)
+
+    const item = document.createElement("div")
+
+    item.classList.add("item-carrinho")
+
+    item.innerHTML = `
+
+        <span>
+            ${nome}
+        </span>
+
+        <span>
+            ${quantidade}x
+        </span>
+
+        <strong>
+            R$ ${subtotal.toFixed(2)}
+        </strong>
+
+        <button onclick="removerItem(${carrinho.length - 1})">
+
+            ❌
+
+        </button>
+
+    `
+
+document
+.getElementById("lista-carrinho")
+.appendChild(item)
+
+document
+.getElementById("total")
+.innerText =
+`Total: R$ ${total.toFixed(2)}`
+
+document
+.getElementById("btn-finalizar")
+.disabled = false
+}
+
+
+function removerItem(indice){
+
+    carrinho.splice(indice, 1)
+
+    atualizarCarrinho()
+
+}
+
+function atualizarCarrinho(){
+
+    const lista =
+    document.getElementById("lista-carrinho")
+
+    lista.innerHTML = ""
+
+    total = 0
+
+    carrinho.forEach((produto, index) => {
+
+        total += produto.subtotal
+
+        const item =
+        document.createElement("div")
+
+        item.classList.add("item-carrinho")
+
+        item.innerHTML = `
+
+            <span>
+                ${produto.nome}
+            </span>
+
+            <span>
+                ${produto.quantidade}x
+            </span>
+
+            <strong>
+                R$ ${produto.subtotal.toFixed(2)}
+            </strong>
+
+            <button onclick="removerItem(${index})">
+
+                ❌
+
+            </button>
+
+        `
+
+        lista.appendChild(item)
+
+    })
+
+    document
+    .getElementById("total")
+    .innerText =
+    `Total: R$ ${total.toFixed(2)}`
+
+    document
+    .getElementById("carrinho-input")
+    .value =
+    JSON.stringify(carrinho)
+
+    if(carrinho.length === 0){
+
+    document
+    .getElementById("btn-finalizar")
+    .disabled = true
+}
+}
+
+function validarVenda(){
+     if(carrinho.length === 0){
+          alert("Adicione um produto!")
+          return false 
+        } 
+
+        return true
+     }
+
+</script>
+
+</body>
+</html>

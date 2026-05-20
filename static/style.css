@@ -1,0 +1,769 @@
+/* =======================================================
+   RESET GERAL
+======================================================= */
+
+*{
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+/* =======================================================
+   BODY
+======================================================= */
+
+body{
+
+    font-family: Arial, Helvetica, sans-serif;
+
+    background: #f1f5f9;
+
+    color: #111827;
+
+}
+
+/* =======================================================
+   LAYOUT PRINCIPAL
+======================================================= */
+
+.layout{
+
+    display: flex;
+
+    min-height: 100vh;
+
+}
+
+/* =======================================================
+   SIDEBAR
+======================================================= */
+
+.sidebar{
+
+    width: 260px;
+
+    background: linear-gradient(
+        180deg,
+        #0f172a,
+        #1e293b
+    );
+
+    color: white;
+
+    padding: 30px 20px;
+
+    position: fixed;
+
+    top: 0;
+
+    left: 0;
+
+    height: 100vh;
+
+    overflow-y: auto;
+
+    z-index: 1000;
+
+}
+
+/* TÍTULO SIDEBAR */
+
+.sidebar h2{
+
+    margin-bottom: 40px;
+
+    font-size: 38px;
+
+}
+
+/* LISTA SIDEBAR */
+
+.sidebar ul{
+
+    list-style: none;
+
+    display: flex;
+
+    flex-direction: column;
+
+    gap: 12px;
+
+}
+
+/* ITEM SIDEBAR */
+
+.sidebar li{
+
+    width: 100%;
+
+}
+
+/* LINKS SIDEBAR */
+
+.sidebar a{
+
+    color: white;
+
+    text-decoration: none;
+
+    font-size: 28px;
+
+    display: block;
+
+    padding: 14px;
+
+    border-radius: 12px;
+
+    transition: 0.2s;
+
+}
+
+/* HOVER SIDEBAR */
+
+.sidebar a:hover{
+
+    background: rgba(255,255,255,0.1);
+
+    transform: translateX(5px);
+
+}
+
+/* =======================================================
+   MAIN
+======================================================= */
+
+.main{
+
+    flex: 1;
+
+    margin-left: 260px;
+
+    padding: 40px;
+
+}
+
+/* =======================================================
+   CONTAINER
+======================================================= */
+
+.container{
+
+    width: 100%;
+
+    max-width: 1400px;
+
+    margin: auto;
+
+}
+
+/* =======================================================
+   TÍTULOS
+======================================================= */
+
+h1{
+
+    margin-bottom: 25px;
+
+    font-size: 52px;
+
+    color: #111827;
+
+}
+
+h2{
+
+    margin-bottom: 20px;
+
+    color: #374151;
+
+}
+
+h3{
+
+    color: #374151;
+
+}
+
+/* =======================================================
+   PARÁGRAFOS
+======================================================= */
+
+p{
+
+    color: #555;
+
+}
+
+/* =======================================================
+   CARDS
+======================================================= */
+
+.cards{
+
+    display: flex;
+
+    gap: 20px;
+
+    margin-top: 30px;
+
+    flex-wrap: wrap;
+
+}
+
+.card{
+
+    background: white;
+
+    padding: 30px;
+
+    border-radius: 20px;
+
+    box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+
+    min-width: 240px;
+
+    transition: 0.2s;
+
+}
+
+.card:hover{
+
+    transform: translateY(-5px);
+
+}
+
+.card h3{
+
+    margin-bottom: 15px;
+
+    color: #444;
+
+    font-size: 24px;
+
+}
+
+.card p{
+
+    font-size: 36px;
+
+    font-weight: bold;
+
+    color: #2563eb;
+
+}
+
+/* =======================================================
+   BOTÕES
+======================================================= */
+
+button{
+
+    background: linear-gradient(
+        90deg,
+        #2563eb,
+        #3b82f6
+    );
+
+    color: white;
+
+    border: none;
+
+    padding: 15px 30px;
+
+    border-radius: 12px;
+
+    cursor: pointer;
+
+    font-size: 16px;
+
+    font-weight: bold;
+
+    transition: 0.2s;
+
+}
+
+button:hover{
+
+    transform: scale(1.03);
+
+}
+
+/* =======================================================
+   ÁREA DE AÇÕES
+======================================================= */
+
+.acoes{
+
+    margin-top: 40px;
+
+    display: flex;
+
+    gap: 20px;
+
+    flex-wrap: wrap;
+
+}
+
+.acoes button{
+
+    padding: 20px 35px;
+
+    font-size: 18px;
+
+}
+
+/* =======================================================
+   LOGIN
+======================================================= */
+
+.login-box{
+
+    width: 400px;
+
+    margin: 100px auto;
+
+    background: white;
+
+    padding: 40px;
+
+    border-radius: 20px;
+
+    box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+
+    display: flex;
+
+    flex-direction: column;
+
+    gap: 15px;
+
+}
+
+.login-box input{
+
+    padding: 15px;
+
+    border-radius: 12px;
+
+    border: 1px solid #ccc;
+
+    font-size: 16px;
+
+}
+
+.login-box button{
+
+    padding: 15px;
+
+}
+
+/* =======================================================
+   FORMULÁRIOS
+======================================================= */
+
+form{
+
+    display: flex;
+
+    flex-direction: column;
+
+    gap: 15px;
+
+    margin-top: 30px;
+
+}
+
+form input,
+select{
+
+    padding: 15px;
+
+    border-radius: 12px;
+
+    border: 1px solid #ccc;
+
+    font-size: 16px;
+
+}
+
+/* =======================================================
+   CAMPO DE PESQUISA
+======================================================= */
+
+#pesquisa{
+
+    width: 100%;
+
+    padding: 15px;
+
+    margin-top: 20px;
+
+    margin-bottom: 30px;
+
+    border-radius: 12px;
+
+    border: 1px solid #ccc;
+
+    font-size: 16px;
+
+}
+
+/* =======================================================
+   GRID DE PRODUTOS
+======================================================= */
+
+.grid-produtos{
+
+    display: grid;
+
+    grid-template-columns:
+    repeat(auto-fit, minmax(260px, 1fr));
+
+    gap: 20px;
+
+    margin-top: 30px;
+
+}
+
+/* =======================================================
+   CARD PRODUTO
+======================================================= */
+
+.produto-item{
+
+    background: white;
+
+    padding: 25px;
+
+    border-radius: 20px;
+
+    box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+
+    display: flex;
+
+    flex-direction: column;
+
+    gap: 12px;
+
+    transition: 0.2s;
+
+}
+
+.produto-item:hover{
+
+    transform: scale(1.03);
+
+}
+
+.produto-item strong{
+
+    font-size: 24px;
+
+    color: #111827;
+
+}
+
+.produto-item span{
+
+    font-size: 18px;
+
+    color: #555;
+
+}
+
+/* =======================================================
+   AÇÕES PRODUTO
+======================================================= */
+
+.acoes-produto{
+
+    display: flex;
+
+    gap: 20px;
+
+    margin-top: 15px;
+
+    justify-content: center;
+
+}
+
+.acoes-produto a{
+
+    text-decoration: none;
+
+    font-size: 24px;
+
+    transition: 0.2s;
+
+}
+
+.acoes-produto a:hover{
+
+    transform: scale(1.2);
+
+}
+
+/* =======================================================
+   FILTROS RELATÓRIOS
+======================================================= */
+
+.filtros-relatorio{
+
+    display: flex;
+
+    gap: 15px;
+
+    flex-wrap: wrap;
+
+    margin-top: 30px;
+
+    margin-bottom: 40px;
+
+}
+
+.filtros-relatorio button{
+
+    padding: 15px 25px;
+
+    border-radius: 12px;
+
+    font-size: 16px;
+
+}
+
+/* =======================================================
+   HISTÓRICO RECENTE
+======================================================= */
+
+.historico-recente{
+
+    margin-top: 50px;
+
+    background: white;
+
+    padding: 25px;
+
+    border-radius: 15px;
+
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+
+}
+
+.historico-recente h2{
+
+    margin-bottom: 25px;
+
+    color: #1e293b;
+
+}
+
+/* =======================================================
+   VENDA RECENTE
+======================================================= */
+
+.venda-recente{
+
+    display: flex;
+
+    justify-content: space-between;
+
+    align-items: center;
+
+    padding: 15px;
+
+    border-bottom: 1px solid #eee;
+
+    font-size: 17px;
+
+}
+
+.venda-recente:last-child{
+
+    border-bottom: none;
+
+}
+
+.venda-recente strong{
+
+    color: #2563eb;
+
+}
+
+/* =======================================================
+   BOX VENDA
+======================================================= */
+
+.box-venda{
+
+    display: flex;
+
+    gap: 15px;
+
+    margin-top: 30px;
+
+    flex-wrap: wrap;
+
+    align-items: center;
+
+}
+
+.box-venda select,
+.box-venda input{
+
+    padding: 15px;
+
+    border-radius: 10px;
+
+    border: 1px solid #ccc;
+
+    font-size: 16px;
+
+    flex: 1;
+
+}
+
+/* =======================================================
+   CARRINHO
+======================================================= */
+
+.carrinho{
+
+    margin-top: 40px;
+
+    background: white;
+
+    padding: 25px;
+
+    border-radius: 15px;
+
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+
+}
+
+.carrinho h2{
+
+    margin-bottom: 20px;
+
+    color: #1e293b;
+
+}
+
+/* =======================================================
+   ITEM CARRINHO
+======================================================= */
+
+.item-carrinho{
+
+    display: flex;
+
+    justify-content: space-between;
+
+    align-items: center;
+
+    padding: 15px;
+
+    border-bottom: 1px solid #eee;
+
+    font-size: 17px;
+
+}
+
+.item-carrinho:last-child{
+
+    border-bottom: none;
+
+}
+
+/* =======================================================
+   TOTAL CARRINHO
+======================================================= */
+
+#total{
+
+    margin-top: 25px;
+
+    color: #2563eb;
+
+}
+
+/* =======================================================
+   ITENS VENDA
+======================================================= */
+
+.itens-venda{
+
+    display: flex;
+
+    flex-wrap: wrap;
+
+    gap: 10px;
+
+    max-width: 700px;
+
+}
+
+/* =======================================================
+   TAG ITEM
+======================================================= */
+
+.tag-item{
+
+    background: #f1f5ff;
+
+    color: #2563eb;
+
+    padding: 8px 12px;
+
+    border-radius: 12px;
+
+    font-weight: 600;
+
+    font-size: 14px;
+
+    border: 1px solid #dbeafe;
+
+}
+
+/* =======================================================
+   RESPONSIVIDADE
+======================================================= */
+
+@media(max-width: 900px){
+
+    .sidebar{
+
+        width: 100%;
+
+        height: auto;
+
+        position: relative;
+
+    }
+
+    .main{
+
+        margin-left: 0;
+
+        padding: 20px;
+
+    }
+
+    .sidebar a{
+
+        font-size: 18px;
+
+    }
+
+    h1{
+
+        font-size: 36px;
+
+    }
+
+    .cards{
+
+        flex-direction: column;
+
+    }
+
+}
+

@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+
+    <meta name="viewport"
+    content="width=device-width, initial-scale=1.0">
+
+    <title>Relatórios</title>
+
+    <link rel="stylesheet"
+    href="{{ url_for('static', filename='style.css') }}">
+</head>
+
+<body>
+
+<div class="layout">
+
+    <div class="sidebar">
+
+        <h2>🛍️ Loja</h2>
+
+        <ul>
+
+            <li>
+                <a href="/dashboard">
+                    📊 Início
+                </a>
+            </li>
+
+            <li>
+                <a href="/produtos">
+                    📦 Produtos
+                </a>
+            </li>
+
+            <li>
+                <a href="/nova-venda">
+                    💰 Nova venda
+                </a>
+            </li>
+
+            <li>
+                <a href="/historico">
+                    🧾 Histórico
+                </a>
+            </li>
+
+            <li>
+                <a href="/relatorios">
+                    📈 Relatórios
+                </a>
+            </li>
+
+            <li>
+                <a href="/estoque">
+                     📦 Estoque
+                </a>
+            </li>
+
+            <li>
+                <a href="/lucro">
+                     💵 Lucro
+                </a> 
+            </li> 
+            
+            <li> 
+                <a href="/gestao">
+                     ⚙️ Gestão
+                </a> 
+            </li>
+
+        </ul>
+
+    </div>
+
+    <div class="main">
+
+        <h1>📈 Relatórios Financeiros</h1>
+
+        <div class="filtros-relatorio">
+
+            <a href="/relatorios?filtro=hoje">
+                <button>📅 Hoje</button>
+            </a>
+
+            <a href="/relatorios?filtro=semana">
+                <button>🗓️ Semana</button>
+            </a>
+
+            <a href="/relatorios?filtro=mes">
+                <button>📆 Mês</button>
+            </a>
+
+            <a href="/relatorios?filtro=ano">
+                <button>📊 Ano</button>
+            </a>
+
+        </div>
+
+        <div class="cards">
+
+            <div class="card">
+                <h3>💰 Total vendido</h3>
+                <p>
+                    R$ {{ total }}
+                </p>
+            </div>
+
+            <div class="card">
+                <h3>💳 PIX</h3>
+                <p>
+                    R$ {{ pix }}
+                </p>
+            </div>
+
+            <div class="card">
+                <h3>💵 Dinheiro</h3>
+                <p>
+                    R$ {{ dinheiro }}
+                </p>
+            </div>
+
+            <div class="card">
+
+                <h3>💳 Cartão</h3>
+                <p>
+                    R$ {{ cartao }}
+                </p>
+            </div>
+
+            <div class="card">
+
+                <h3>
+                    📈 Lucro
+                </h3>
+
+                <p>
+                    R$ {{ lucro }}
+                </p>
+
+            </div>
+
+
+        </div>
+
+    </div>
+
+</div>
+
+</body>
+</html>

@@ -1,0 +1,108 @@
+{
+    "produtos": [
+        {
+            "id": 1,
+            "nome": "Camisa adul",
+            "preco": 60.0,
+            "custo": 25.0,
+            "estoque": 100,
+            "estoque_minimo": 15
+        },
+        {
+            "id": 2,
+            "nome": "Camisa inf",
+            "preco": 45.0,
+            "custo": 20.0,
+            "estoque": 85,
+            "estoque_minimo": 15
+        },
+        {
+            "id": 4,
+            "nome": "Bermuda jeans adul",
+            "preco": 70.0,
+            "custo": 30.0,
+            "estoque": 50,
+            "estoque_minimo": 15
+        },
+        {
+            "id": 4,
+            "nome": "Short adul",
+            "preco": 60.0,
+            "estoque": 0,
+            "estoque_minimo": 0,
+            "custo": 0
+        }
+    ],
+    "vendas": [
+        {
+            "id": 1,
+            "itens": [
+                {
+                    "produto": "Short inf",
+                    "quantidade": 1,
+                    "subtotal": 50.0,
+                    "lucro": 35.0
+                }
+            ],
+            "total": 50.0,
+            "pagamento": "Pix",
+            "data": "18/05/2026 12:35"
+        },
+        {
+            "id": 2,
+            "itens": [
+                {
+                    "produto": "Camisa inf",
+                    "quantidade": 5,
+                    "subtotal": 225.0,
+                    "lucro": 125.0
+                }
+            ],
+            "total": 225.0,
+            "pagamento": "Crédito 3x",
+            "data": "18/05/2026 13:56"
+        },
+        {
+            "id": 3,
+            "itens": [
+                {
+                    "produto": "Short adul",
+                    "quantidade": 5,
+                    "subtotal": 325.0,
+                    "lucro": 325.0
+                }
+            ],
+            "total": 325.0,
+            "pagamento": "Pix",
+            "data": "18/05/2026 14:19"
+        },
+        {
+            "id": 4,
+            "itens": [
+                {
+                    "produto": "gabriel",
+                    "quantidade": 5,
+                    "subtotal": 250.0,
+                    "lucro": 250.0
+                }
+            ],
+            "total": 250.0,
+            "pagamento": "Crédito 2x",
+            "data": "18/05/2026 21:47"
+        },
+        {
+            "id": 5,
+            "itens": [
+                {
+                    "produto": "Camisa inf",
+                    "quantidade": 10,
+                    "subtotal": 450.0,
+                    "lucro": 250.0
+                }
+            ],
+            "total": 450.0,
+            "pagamento": "Crédito 3x",
+            "data": "20/05/2026 17:29"
+        }
+    ]
+}

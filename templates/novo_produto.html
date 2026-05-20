@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport"
+    content="width=device-width, initial-scale=1.0">
+
+    <title>Novo Produto</title>
+
+    <link rel="stylesheet"
+    href="{{ url_for('static', filename='style.css') }}">
+
+</head>
+
+<body>
+
+    <div class="container">
+
+        <h1>
+            ➕ Novo Produto
+        </h1>
+
+        <form
+        action="/salvar-produto"
+        method="POST">
+
+            <input
+            type="text"
+            name="nome"
+            placeholder="Nome do produto"
+            required>
+
+            <input
+            type="number"
+            step="0.01"
+            name="preco"
+            placeholder="Preço"
+            required>
+
+            <button type="submit">
+
+                💾 Salvar Produto
+
+            </button>
+
+        </form>
+
+        <br>
+
+        <a href="/produtos">
+
+            <button>
+
+                ⬅ Voltar
+
+            </button>
+
+        </a>
+
+    </div>
+
+</body>
+</html>

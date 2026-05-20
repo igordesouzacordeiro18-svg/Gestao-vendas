@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport"
+    content="width=device-width, initial-scale=1.0">
+
+    <title>Gestão</title>
+
+    <link rel="stylesheet"
+    href="{{ url_for('static', filename='style.css') }}">
+
+</head>
+
+<body>
+
+<div class="layout">
+
+    <div class="sidebar">
+
+        <h2>
+            🛍️ Loja
+        </h2>
+
+        <ul>
+
+            <li>
+                <a href="/dashboard">
+                    📊 Início
+                </a>
+            </li>
+
+            <li>
+                <a href="/produtos">
+                    📦 Produtos
+                </a>
+            </li>
+
+            <li>
+                <a href="/nova-venda">
+                    💰 Nova venda
+                </a>
+            </li>
+
+            <li>
+                <a href="/historico">
+                    🧾 Histórico
+                </a>
+            </li>
+
+            <li>
+                <a href="/relatorios">
+                    📈 Relatórios
+                </a>
+            </li>
+
+            <li>
+                <a href="/estoque">
+                    📦 Estoque
+                </a>
+            </li>
+
+            <li>
+                <a href="/lucro">
+                    💵 Lucro
+                </a>
+            </li>
+
+            <li>
+                <a href="/gestao">
+                    ⚙️ Gestão
+                </a>
+            </li>
+
+        </ul>
+
+    </div>
+
+    <div class="main">
+
+        <h1>
+            ⚙️ Gestão de Produtos
+        </h1>
+
+        <div class="grid-produtos">
+
+            {% for produto in produtos %}
+
+                <div class="produto-item">
+
+                    <h3>
+
+                        📦 {{ produto.nome }}
+
+                    </h3>
+
+                    <p>
+
+                        💰 Venda:
+                        R$ {{ produto.preco }}
+
+                    </p>
+
+                    <p>
+
+                        📦 Estoque:
+                        {{ produto.estoque }}
+
+                    </p>
+
+                    <p>
+
+                        ⚠️ Estoque mínimo:
+                        {{ produto.estoque_minimo }}
+
+                    </p>
+
+                    <p>
+
+                        💵 Custo:
+                        R$ {{ produto.custo }}
+
+                    </p>
+
+                    <a
+                    href="/editar-gestao/{{ produto.id }}">
+
+                        <button>
+
+                            ✏️ Ajustar
+
+                        </button>
+
+                    </a>
+
+                </div>
+
+            {% endfor %}
+
+        </div>
+
+    </div>
+
+</div>
+
+</body>
+</html>
+

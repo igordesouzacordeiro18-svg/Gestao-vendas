@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+
+    <meta charset="UTF-8">
+
+    <title>Troca realizada</title>
+
+    <link rel="stylesheet"
+    href="{{ url_for('static', filename='style.css') }}">
+
+</head>
+
+<body>
+
+<div class="container">
+
+    <h1>✅ Troca realizada!</h1>
+
+    {% if diferenca > 0 %}
+
+        <h2>
+            Cliente deve pagar:
+            R$ {{ diferenca }}
+        </h2>
+
+    {% elif diferenca < 0 %}
+
+    <h2>
+        🎁 Crédito restante:
+        R$ {{ diferenca * -1 }}
+    </h2>
+
+    <p>
+        O cliente pode usar esse valor
+        em outra compra.
+    </p>
+
+    {% else %}
+
+        <h2>
+            Troca sem diferença.
+        </h2>
+
+    {% endif %}
+
+    <a href="/historico">
+
+        <button>
+            ⬅ Voltar
+        </button>
+
+    </a>
+
+</div>
+
+</body>
+</html>

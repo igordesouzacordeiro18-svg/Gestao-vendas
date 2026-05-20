@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport"
+    content="width=device-width, initial-scale=1.0">
+
+    <title>Produtos</title>
+
+    <link rel="stylesheet"
+    href="{{ url_for('static', filename='style.css') }}">
+
+</head>
+
+<body>
+
+<div class="container">
+
+    <h1>
+        📦 Produtos Cadastrados
+    </h1>
+
+    <input
+    type="text"
+    id="pesquisa"
+    placeholder="🔍 Pesquisar produto...">
+
+    <br><br>
+
+    <a href="/novo-produto">
+
+        <button>
+
+            ➕ Novo Produto
+
+        </button>
+
+    </a>
+
+    <br><br>
+
+    <div class="grid-produtos">
+
+        {% for produto in produtos %}
+
+            <div class="produto-item">
+
+                <h3>
+
+                    {{ produto.nome }}
+
+                </h3>
+
+                <strong>
+
+                    💰 R$ {{ produto.preco }}
+
+                </strong>
+
+                <br>
+
+                {% if produto.estoque <= produto.estoque_minimo %}
+
+                    <span
+                    style="color:red; font-weight:bold;">
+
+                        🚨 Estoque baixo:
+                        {{ produto.estoque }}
+
+                    </span>
+
+                {% else %}
+
+                    <span>
+
+                        📦 Estoque:
+                        {{ produto.estoque }}
+
+                    </span>
+
+                {% endif %}
+
+                <div class="acoes-produto">
+
+                    <a
+                    href="/editar-produto/{{ produto.id }}">
+
+                        <button>
+
+                            ✏️ Editar
+
+                        </button>
+
+                    </a>
+
+                    <a
+                    href="/excluir-produto/{{ produto.id }}"
+
+                    onclick="return confirm('Tem certeza que deseja excluir este produto?')">
+
+                        <button>
+
+                            🗑 Excluir
+
+                        </button>
+
+                    </a>
+
+                </div>
+
+            </div>
+
+        {% endfor %}
+
+    </div>
+
+    <br>
+
+    <a href="/dashboard">
+
+        <button>
+
+            ⬅ Voltar
+
+        </button>
+
+    </a>
+
+</div>
+
+<script>
+
+const pesquisa =
+document.getElementById("pesquisa")
+
+pesquisa.addEventListener("input", () => {
+
+    const valor =
+    pesquisa.value.toLowerCase()
+
+    const produtos =
+    document.querySelectorAll(".produto-item")
+
+    produtos.forEach(produto => {
+
+        const texto =
+        produto.innerText.toLowerCase()
+
+        if(texto.includes(valor)){
+
+            produto.style.display = "flex"
+
+        }
+        else{
+
+            produto.style.display = "none"
+
+        }
+
+    })
+
+})
+
+</script>
+
+</body>
+</html>
+
