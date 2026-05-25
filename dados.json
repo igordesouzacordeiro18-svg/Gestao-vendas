@@ -13,7 +13,7 @@
             "nome": "Camisa inf",
             "preco": 45.0,
             "custo": 20.0,
-            "estoque": 85,
+            "estoque": 83,
             "estoque_minimo": 15
         },
         {
@@ -21,14 +21,14 @@
             "nome": "Bermuda jeans adul",
             "preco": 70.0,
             "custo": 30.0,
-            "estoque": 50,
+            "estoque": 48,
             "estoque_minimo": 15
         },
         {
             "id": 4,
             "nome": "Short adul",
             "preco": 60.0,
-            "estoque": 0,
+            "estoque": 2,
             "estoque_minimo": 0,
             "custo": 0
         }
@@ -103,6 +103,43 @@
             "total": 450.0,
             "pagamento": "Crédito 3x",
             "data": "20/05/2026 17:29"
+        },
+        {
+            "id": 6,
+            "itens": [
+                {
+                    "produto": "Short adul",
+                    "quantidade": 5,
+                    "subtotal": 300.0,
+                    "lucro": 300.0
+                }
+            ],
+            "total": 300.0,
+            "pagamento": "Crédito 2x",
+            "data": "22/05/2026 10:11"
+        },
+        {
+            "id": 7,
+            "itens": [
+                {
+                    "produto": "Bermuda jeans adul",
+                    "quantidade": 2,
+                    "subtotal": 140.0,
+                    "lucro": 120.0
+                },
+                {
+                    "produto": "Camisa inf",
+                    "quantidade": 2,
+                    "subtotal": 90.0,
+                    "lucro": 50.0
+                }
+            ],
+            "total": 230.0,
+            "pagamento": "Crédito 3x",
+            "data": "24/05/2026 22:28",
+            "troca": true,
+            "saldo_restante": 0,
+            "data_troca": "24/05/2026 22:29"
         }
     ]
 }
