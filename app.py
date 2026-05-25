@@ -237,16 +237,29 @@ def salvar_venda():
 @app.route("/salvar-produto", methods=["POST"])
 def salvar_produto():
 
+    global dados
+
+    dados = carregar_dados()
+
     nome = request.form["nome"]
 
     preco = float(
         request.form["preco"]
     )
 
+    novo_id = 1
+
+    if dados["produtos"]:
+
+        novo_id = max(
+            produto["id"]
+            for produto in dados["produtos"]
+        ) + 1
+
     produto = {
 
         "id":
-        len(dados["produtos"]) + 1,
+        novo_id,
 
         "nome":
         nome,
@@ -671,20 +684,35 @@ def lucro():
 
     lucro_total = 0
 
+    produtos_com_custo = []
+
+    produtos_sem_custo = []
+
+    for produto in dados["produtos"]:
+
+        if produto["custo"] > 0:
+
+            produtos_com_custo.append(produto)
+
+        else:
+
+            produtos_sem_custo.append(produto)
+
     for venda in dados["vendas"]:
 
         for item in venda["itens"]:
 
-            
-            lucro_total += item.get(
-                "lucro",
-                0
-            )
+            lucro_item = item.get("lucro")
 
+            if lucro_item is not None:
+
+                lucro_total += lucro_item
 
     return render_template(
         "lucro.html",
-        lucro_total=lucro_total
+        lucro_total=lucro_total,
+        produtos_com_custo=produtos_com_custo,
+        produtos_sem_custo=produtos_sem_custo
     )
 
 @app.route("/gestao")
@@ -700,6 +728,119 @@ def gestao():
         produtos=produtos_ordenados
     )
 
+
+@app.route("/estoque")
+def estoque():
+
+    dados = carregar_dados()
+
+    produtos = dados["produtos"]
+
+    return render_template(
+        "estoque.html",
+        produtos=produtos
+    )
+
+
+@app.route("/criar-estoque")
+def criar_estoque():
+
+    dados = carregar_dados()
+
+    produtos = dados["produtos"]
+
+    return render_template(
+        "criar_estoque.html",
+        produtos=produtos
+    )
+
+@app.route("/salvar-estoque", methods=["POST"])
+def salvar_estoque():
+
+    global dados
+
+    dados = carregar_dados()
+
+    produto_id = int(
+        request.form["produto"]
+    )
+
+    estoque = int(
+        request.form["estoque"]
+    )
+
+    estoque_minimo = int(
+        request.form["estoque_minimo"]
+    )
+
+    for produto in dados["produtos"]:
+
+        if produto["id"] == produto_id:
+
+            produto["estoque"] = estoque
+
+            produto["estoque_minimo"] = estoque_minimo
+
+            break
+
+    salvar_dados(dados)
+
+    return redirect("/estoque")
+
+@app.route("/editar-gestao/<int:id>")
+def editar_gestao(id):
+
+    produto_encontrado = None
+
+    for produto in dados["produtos"]:
+
+        if produto["id"] == id:
+
+            produto_encontrado = produto
+
+            break
+
+    return render_template(
+        "editar_gestao.html",
+        produto=produto_encontrado
+    )
+
+
+@app.route(
+    "/salvar-gestao/<int:id>",
+    methods=["POST"]
+)
+def salvar_gestao(id):
+
+    global dados
+
+    dados = carregar_dados()
+
+    for produto in dados["produtos"]:
+
+        if produto["id"] == id:
+
+            produto["preco"] = float(
+                request.form["preco"]
+            )
+
+            produto["custo"] = float(
+                request.form["custo"]
+            )
+
+            produto["estoque"] = int(
+                request.form["estoque"]
+            )
+
+            produto["estoque_minimo"] = int(
+                request.form["estoque_minimo"]
+            )
+
+            break
+
+    salvar_dados(dados)
+
+    return redirect("/gestao")
 
 ARQUIVO = "dados.json"
 

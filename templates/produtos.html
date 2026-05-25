@@ -61,26 +61,36 @@
 
                 <br>
 
-                {% if produto.estoque <= produto.estoque_minimo %}
+                    {% if produto.estoque == 0 %}
 
-                    <span
-                    style="color:red; font-weight:bold;">
+                        <span
+                        style="color:gray; font-weight:bold;">
 
-                        🚨 Estoque baixo:
-                        {{ produto.estoque }}
+                            ⚪ Estoque não cadastrado
 
-                    </span>
+                        </span>
 
-                {% else %}
+                    {% elif produto.estoque <= produto.estoque_minimo %}
 
-                    <span>
+                        <span
+                        style="color:red; font-weight:bold;">
 
-                        📦 Estoque:
-                        {{ produto.estoque }}
+                            🚨 Estoque baixo:
+                            {{ produto.estoque }}
 
-                    </span>
+                        </span>
 
-                {% endif %}
+                    {% else %}
+
+                        <span>
+
+                            📦 Estoque:
+                            {{ produto.estoque }}
+
+                        </span>
+
+                    {% endif %}
+                    
 
                 <div class="acoes-produto">
 

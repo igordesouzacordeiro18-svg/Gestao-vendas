@@ -98,6 +98,112 @@
 
         </div>
 
+        <br><br>
+
+        <a href="/gestao">
+
+            <button>
+
+                ➕ Adicionar / Atualizar Custos
+
+            </button>
+
+        </a>
+
+        <br><br>
+
+        <div class="card">
+
+            <h2>
+
+                ✅ Produtos contabilizados
+                ({{ produtos_com_custo|length }})
+
+            </h2>
+
+            <div class="grid-produtos">
+
+                {% for produto in produtos_com_custo %}
+
+                    <div class="produto-item">
+
+                        <h3>
+
+                            📦 {{ produto.nome }}
+
+                        </h3>
+
+                        <p>
+
+                            💵 Custo:
+                            R$ {{ produto.custo }}
+
+                        </p>
+
+                        <p>
+
+                            💰 Venda:
+                            R$ {{ produto.preco }}
+
+                        </p>
+
+                    </div>
+
+                {% endfor %}
+
+            </div>
+
+        </div>
+
+        <br><br>
+
+        <div class="card">
+
+            <h2>
+
+                ⚪ Produtos sem custo cadastrado
+                ({{ produtos_sem_custo|length }})
+
+            </h2>
+
+            <div class="grid-produtos">
+
+                {% for produto in produtos_sem_custo %}
+
+                    <div class="produto-item">
+
+                        <h3>
+
+                            📦 {{ produto.nome }}
+
+                        </h3>
+
+                        <p
+                        style="color:gray; font-weight:bold;">
+
+                            ⚪ Custo não cadastrado
+
+                        </p>
+
+                        <a
+                        href="/editar-gestao/{{ produto.id }}">
+
+                            <button>
+
+                                ➕ Adicionar custo
+
+                            </button>
+
+                        </a>
+
+                    </div>
+
+                {% endfor %}
+
+            </div>
+
+        </div>
+
     </div>
 
 </div>

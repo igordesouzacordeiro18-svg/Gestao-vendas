@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport"
+    content="width=device-width, initial-scale=1.0">
+
+    <title>Criar Estoque</title>
+
+    <link rel="stylesheet"
+    href="{{ url_for('static', filename='style.css') }}">
+
+</head>
+
+<body>
+
+<div class="container">
+
+    <h1>
+        📦 Criar / Atualizar Estoque
+    </h1>
+
+    <form
+    action="/salvar-estoque"
+    method="POST">
+
+        <label>
+            Produto
+        </label>
+
+        <select
+        name="produto"
+        required>
+
+            {% for produto in produtos %}
+
+                <option
+                value="{{ produto.id }}">
+
+                    {{ produto.nome }}
+
+                </option>
+
+            {% endfor %}
+
+        </select>
+
+        <br><br>
+
+        <label>
+            Quantidade em estoque
+        </label>
+
+        <input
+        type="number"
+        name="estoque"
+        required>
+
+        <br><br>
+
+        <label>
+            Estoque mínimo
+        </label>
+
+        <input
+        type="number"
+        name="estoque_minimo"
+        required>
+
+        <br><br>
+
+        <button type="submit">
+
+            💾 Salvar Estoque
+
+        </button>
+
+    </form>
+
+    <br>
+
+    <a href="/estoque">
+
+        <button>
+
+            ⬅ Voltar
+
+        </button>
+
+    </a>
+
+</div>
+
+</body>
+</html>
