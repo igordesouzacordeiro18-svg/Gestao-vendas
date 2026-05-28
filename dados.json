@@ -5,7 +5,7 @@
             "nome": "Camisa adul",
             "preco": 70.0,
             "custo": 25.0,
-            "estoque": 90,
+            "estoque": 83,
             "estoque_minimo": 20
         },
         {
@@ -13,14 +13,14 @@
             "nome": "Camisa inf",
             "preco": 45.0,
             "custo": 20.0,
-            "estoque": 83,
+            "estoque": 80,
             "estoque_minimo": 15
         },
         {
             "id": 5,
             "nome": "Meias",
             "preco": 12.0,
-            "estoque": 80,
+            "estoque": 69,
             "estoque_minimo": 20,
             "custo": 5.0
         },
@@ -28,8 +28,8 @@
             "id": 6,
             "nome": "Short inf",
             "preco": 50.0,
-            "estoque": 90,
-            "estoque_minimo": 20,
+            "estoque": 10,
+            "estoque_minimo": 10,
             "custo": 20.0
         },
         {
@@ -38,15 +38,39 @@
             "preco": 60.0,
             "estoque": 0,
             "estoque_minimo": 0,
-            "custo": 0
+            "custo": 25.0
         },
         {
             "id": 8,
-            "nome": "bone inf",
-            "preco": 45.0,
-            "estoque": 50,
+            "nome": "Bone inf",
+            "preco": 40.0,
+            "estoque": 49,
             "estoque_minimo": 20,
             "custo": 20.0
+        },
+        {
+            "id": 9,
+            "nome": "Bone adul",
+            "preco": 55.0,
+            "estoque": 18,
+            "estoque_minimo": 19,
+            "custo": 20.0
+        },
+        {
+            "id": 10,
+            "nome": "z",
+            "preco": 3.0,
+            "estoque": 0,
+            "estoque_minimo": 0,
+            "custo": 0
+        },
+        {
+            "id": 11,
+            "nome": "bobojaco adult",
+            "preco": 200.0,
+            "estoque": 0,
+            "estoque_minimo": 0,
+            "custo": 0
         }
     ],
     "vendas": [
@@ -156,6 +180,168 @@
             "troca": true,
             "saldo_restante": 0,
             "data_troca": "24/05/2026 22:29"
+        },
+        {
+            "id": 8,
+            "itens": [
+                {
+                    "produto": "Camisa adul",
+                    "quantidade": 3,
+                    "subtotal": 210.0,
+                    "lucro": 135.0
+                },
+                {
+                    "produto": "Meias",
+                    "quantidade": 3,
+                    "subtotal": 36.0,
+                    "lucro": 21.0
+                }
+            ],
+            "total": 246.0,
+            "pagamento": "Débito",
+            "data": "25/05/2026 13:51"
+        },
+        {
+            "id": 9,
+            "itens": [
+                {
+                    "produto": "Camisa adul",
+                    "quantidade": 3,
+                    "subtotal": 210.0,
+                    "lucro": 135.0
+                }
+            ],
+            "total": 210.0,
+            "pagamento": "Pix",
+            "data": "25/05/2026 14:24"
+        },
+        {
+            "id": 10,
+            "itens": [
+                {
+                    "produto": "Bone inf",
+                    "quantidade": 1,
+                    "subtotal": 45.0,
+                    "lucro": 25.0
+                },
+                {
+                    "produto": "Meias",
+                    "quantidade": 5,
+                    "subtotal": 60.0,
+                    "lucro": 35.0
+                },
+                {
+                    "produto": "Short inf",
+                    "quantidade": 2,
+                    "subtotal": 100.0,
+                    "lucro": 60.0
+                }
+            ],
+            "total": 205.0,
+            "pagamento": "Crédito 3x",
+            "data": "25/05/2026 14:25"
+        },
+        {
+            "id": 11,
+            "itens": [
+                {
+                    "produto": "Meias",
+                    "quantidade": 3,
+                    "subtotal": 36.0,
+                    "lucro": 21.0
+                },
+                {
+                    "produto": "Camisa inf",
+                    "quantidade": 2,
+                    "subtotal": 90.0,
+                    "lucro": 50.0
+                }
+            ],
+            "total": 126.0,
+            "pagamento": "Pix",
+            "data": "27/05/2026 15:25"
+        },
+        {
+            "id": 12,
+            "itens": [
+                {
+                    "produto": "Short adul",
+                    "quantidade": 3,
+                    "subtotal": 180.0,
+                    "lucro": 180.0
+                }
+            ],
+            "total": 180.0,
+            "pagamento": "Crédito 2x",
+            "data": "27/05/2026 15:30"
+        },
+        {
+            "id": 13,
+            "itens": [
+                {
+                    "produto": "Short inf",
+                    "quantidade": 1,
+                    "subtotal": 50.0,
+                    "lucro": 30.0
+                }
+            ],
+            "total": 50.0,
+            "pagamento": "Pix",
+            "data": "27/05/2026 15:41"
+        },
+        {
+            "id": 14,
+            "itens": [
+                {
+                    "produto": "Camisa inf",
+                    "quantidade": 1,
+                    "subtotal": 70.0,
+                    "lucro": 35.0
+                }
+            ],
+            "total": 70.0,
+            "pagamento": "Pix",
+            "data": "27/05/2026 15:55",
+            "troca": true,
+            "saldo_restante": 25.0,
+            "data_troca": "27/05/2026 17:12"
+        },
+        {
+            "id": 15,
+            "itens": [
+                {
+                    "produto": "Bone adul",
+                    "quantidade": 1,
+                    "subtotal": 55.0,
+                    "lucro": 35.0
+                }
+            ],
+            "total": 55.0,
+            "pagamento": "Pix",
+            "data": "27/05/2026 17:12"
+        },
+        {
+            "id": 16,
+            "itens": [
+                {
+                    "produto": "Bone adul",
+                    "quantidade": 1,
+                    "subtotal": 55.0,
+                    "lucro": 35.0
+                },
+                {
+                    "produto": "Camisa adul",
+                    "quantidade": 1,
+                    "subtotal": 70.0,
+                    "lucro": 45.0
+                }
+            ],
+            "total": 125.0,
+            "pagamento": "Dinheiro",
+            "data": "27/05/2026 21:00",
+            "troca": true,
+            "saldo_restante": 0,
+            "data_troca": "27/05/2026 21:10"
         }
     ]
 }

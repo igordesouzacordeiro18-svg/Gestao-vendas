@@ -3,9 +3,7 @@
 <head>
 
     <meta charset="UTF-8">
-
-    <meta name="viewport"
-    content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
     <title>Lucro</title>
 
@@ -18,137 +16,72 @@
 
 <div class="layout">
 
+    <!-- SIDEBAR (igual a sua) -->
     <div class="sidebar">
 
-        <h2>
-            🛍️ Loja
-        </h2>
+        <h2>🛍️ Loja</h2>
 
         <ul>
 
-            <li>
-                <a href="/dashboard">
-                    📊 Início
-                </a>
-            </li>
-
-            <li>
-                <a href="/produtos">
-                    📦 Produtos
-                </a>
-            </li>
-
-            <li>
-                <a href="/nova-venda">
-                    💰 Nova venda
-                </a>
-            </li>
-
-            <li>
-                <a href="/historico">
-                    🧾 Histórico
-                </a>
-            </li>
-
-            <li>
-                <a href="/relatorios">
-                    📈 Relatórios
-                </a>
-            </li>
-
-            <li>
-                <a href="/estoque">
-                    📦 Estoque
-                </a>
-            </li>
-
-            <li>
-                <a href="/lucro">
-                    💵 Lucro
-                </a>
-            </li>
-
-            <li>
-                <a href="/gestao">
-                    ⚙️ Gestão
-                </a>
-            </li>
+            <li><a href="/dashboard">📊 Início</a></li>
+            <li><a href="/produtos">📦 Produtos</a></li>
+            <li><a href="/nova-venda">💰 Nova venda</a></li>
+            <li><a href="/historico">🧾 Histórico</a></li>
+            <li><a href="/relatorios">📈 Relatórios</a></li>
+            <li><a href="/estoque">📦 Estoque</a></li>
+            <li><a href="/lucro">💵 Lucro</a></li>
+            <li><a href="/gestao">⚙️ Gestão</a></li>
 
         </ul>
 
     </div>
 
+    <!-- MAIN -->
     <div class="main">
 
-        <h1>
-            📈 Painel de Lucro
-        </h1>
+        <h1>📈 Painel de Lucro</h1>
 
+        <!-- LUCRO TOTAL -->
         <div class="card">
-
-            <h2>
-                💰 Lucro Total
-            </h2>
-
+            <h2>💰 Lucro Total</h2>
             <p style="font-size:40px;">
-
                 R$ {{ lucro_total }}
-
             </p>
-
         </div>
 
-        <br><br>
+        <br>
 
         <a href="/gestao">
-
-            <button>
-
-                ➕ Adicionar / Atualizar Custos
-
-            </button>
-
+            <button>➕ Adicionar / Atualizar Custos</button>
         </a>
 
         <br><br>
 
+        <!-- PRODUTOS COM CUSTO (TABELA) -->
         <div class="card">
 
             <h2>
-
-                ✅ Produtos contabilizados
-                ({{ produtos_com_custo|length }})
-
+                ✅ Produtos contabilizados ({{ produtos_com_custo|length }})
             </h2>
 
-            <div class="grid-produtos">
+            <div class="tabela">
+
+                <div class="linha header">
+                    <span>Produto</span>
+                    <span>Custo</span>
+                    <span>Venda</span>
+                </div>
 
                 {% for produto in produtos_com_custo %}
+                <div class="linha">
 
-                    <div class="produto-item">
+                    <span>📦 {{ produto.nome }}</span>
 
-                        <h3>
+                    <span>R$ {{ produto.custo }}</span>
 
-                            📦 {{ produto.nome }}
+                    <span>R$ {{ produto.preco }}</span>
 
-                        </h3>
-
-                        <p>
-
-                            💵 Custo:
-                            R$ {{ produto.custo }}
-
-                        </p>
-
-                        <p>
-
-                            💰 Venda:
-                            R$ {{ produto.preco }}
-
-                        </p>
-
-                    </div>
-
+                </div>
                 {% endfor %}
 
             </div>
@@ -157,47 +90,29 @@
 
         <br><br>
 
+        <!-- SEM CUSTO -->
         <div class="card">
 
             <h2>
-
-                ⚪ Produtos sem custo cadastrado
-                ({{ produtos_sem_custo|length }})
-
+                ⚪ Produtos sem custo cadastrado ({{ produtos_sem_custo|length }})
             </h2>
 
-            <div class="grid-produtos">
+            <div class="tabela">
 
                 {% for produto in produtos_sem_custo %}
+                <div class="linha">
 
-                    <div class="produto-item">
+                    <span>📦 {{ produto.nome }}</span>
 
-                        <h3>
+                    <span style="color:gray;">Sem custo</span>
 
-                            📦 {{ produto.nome }}
-
-                        </h3>
-
-                        <p
-                        style="color:gray; font-weight:bold;">
-
-                            ⚪ Custo não cadastrado
-
-                        </p>
-
-                        <a
-                        href="/editar-gestao/{{ produto.id }}">
-
-                            <button>
-
-                                ➕ Adicionar custo
-
-                            </button>
-
+                    <span>
+                        <a href="/editar-gestao/{{ produto.id }}">
+                            <button>➕ Adicionar</button>
                         </a>
+                    </span>
 
-                    </div>
-
+                </div>
                 {% endfor %}
 
             </div>

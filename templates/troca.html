@@ -13,98 +13,90 @@
 
 <body>
 
-<div class="container">
+<div class="troca-container">
 
-    <h1>🔁 Troca de Produto</h1>
+    <div class="card-troca">
 
-    <h3>
-        Produto atual:
-        {{ venda.produto }}
-    </h3>
+        <h1>
+            🔁 Troca de Produto
+        </h1>
 
-    <p>
-        Quantidade atual:
-        {{ venda.quantidade }}
-    </p>
+        <div class="info-troca">
 
-    <p>
-        Valor antigo:
-        R$ {{ venda.total }}
-    </p>
+            <h3>
+                📦 {{ venda.produto }}
+            </h3>
 
-    <form
-    action="/confirmar-troca/{{ venda.id }}"
-    method="POST"
+            <p>
+                Quantidade atual:
+                <strong>{{ venda.quantidade }}</strong>
+            </p>
 
-    onsubmit="return confirm('Confirmar troca?')">
+            <p>
+                Valor antigo:
+                <strong>R$ {{ venda.total }}</strong>
+            </p>
 
-        <label>
-            Novo produto:
-        </label>
+        </div>
 
-        <select name="produto" required>
+        <form
+        class="form-troca"
+        action="/confirmar-troca/{{ venda.id }}"
+        method="POST"
+        onsubmit="return confirm('Confirmar troca?')">
 
-            {% for produto in produtos %}
+            <label>
+                Novo produto
+            </label>
 
-                <option value="{{ produto.id }}">
+            <select name="produto" required>
 
-                    {{ produto.nome }}
-                    - R$ {{ produto.preco }}
+                {% for produto in produtos %}
 
-                </option>
+                    <option value="{{ produto.id }}">
 
-            {% endfor %}
+                        {{ produto.nome }}
+                        - R$ {{ produto.preco }}
 
-        </select>
+                    </option>
 
-        <br><br>
+                {% endfor %}
 
-        <label>
-            Nova quantidade:
-        </label>
+            </select>
 
-        <input
-        type="number"
-        name="quantidade"
-        min="1"
-        value="{{ venda.quantidade }}"
-        required>
+            <label>
+                Nova quantidade
+            </label>
 
-        <br><br>
+            <input
+            type="number"
+            name="quantidade"
+            min="1"
+            value="{{ venda.quantidade }}"
+            required>
 
-        <label>
-            Forma de pagamento:
-        </label>
+            <label>
+                Forma de pagamento
+            </label>
 
-        <select name="pagamento" required>
+            <select name="pagamento" required>
 
-            <option value="Pix">
-                Pix
-            </option>
+                <option value="Pix">Pix</option>
+                <option value="Dinheiro">Dinheiro</option>
+                <option value="Débito">Débito</option>
+                <option value="Crédito">Crédito</option>
 
-            <option value="Dinheiro">
-                Dinheiro
-            </option>
+            </select>
 
-            <option value="Débito">
-                Débito
-            </option>
+            <button type="submit">
 
-            <option value="Crédito">
-                Crédito
-            </option>
+                ✅ Confirmar Troca
 
-        </select>
+            </button>
 
-        <br><br>
+        </form>
 
-        <button type="submit">
-
-            ✅ Confirmar Troca
-
-        </button>
-
-    </form>
+    </div>
 
 </div>
 

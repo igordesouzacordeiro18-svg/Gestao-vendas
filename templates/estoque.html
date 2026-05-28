@@ -116,18 +116,26 @@
 
                     {% if produto["estoque"] == 0 %}
 
-                        <span
-                        style="color:gray; font-weight:bold;">
+                        <span class="status-estoque status-zero">
 
-                            ⚪ Estoque não cadastrado
+                            ⚪ Sem estoque
+
+                        </span>
+
+                    {% elif produto["estoque"] <= produto["estoque_minimo"] %}
+
+                        <span class="status-estoque status-baixo">
+
+                            🔴 Estoque baixo:
+                            {{ produto["estoque"] }}
 
                         </span>
 
                     {% else %}
 
-                        <span>
+                        <span class="status-estoque status-ok">
 
-                            📦 Quantidade:
+                            🟢 Em estoque:
                             {{ produto["estoque"] }}
 
                         </span>

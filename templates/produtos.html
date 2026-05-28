@@ -3,7 +3,6 @@
 <head>
 
     <meta charset="UTF-8">
-
     <meta name="viewport"
     content="width=device-width, initial-scale=1.0">
 
@@ -16,162 +15,217 @@
 
 <body>
 
-<div class="container">
+<div class="layout">
 
-    <h1>
-        📦 Produtos Cadastrados
-    </h1>
+    <!-- SIDEBAR -->
 
-    <input
-    type="text"
-    id="pesquisa"
-    placeholder="🔍 Pesquisar produto...">
+    <div class="sidebar">
 
-    <br><br>
+        <h2>🛍️ Loja</h2>
 
-    <a href="/novo-produto">
+        <ul>
 
-        <button>
+            <li>
+                <a href="/dashboard">
+                    📊 Início
+                </a>
+            </li>
 
-            ➕ Novo Produto
+            <li>
+                <a href="/produtos">
+                    📦 Produtos
+                </a>
+            </li>
 
-        </button>
+            <li>
+                <a href="/nova-venda">
+                    💰 Nova venda
+                </a>
+            </li>
 
-    </a>
+            <li>
+                <a href="/historico">
+                    🧾 Histórico
+                </a>
+            </li>
 
-    <br><br>
+            <li>
+                <a href="/lucro">
+                    📈 Lucro
+                </a>
+            </li>
 
-    <div class="grid-produtos">
+            <li>
+                <a href="/relatorios">
+                    📊 Relatórios
+                </a>
+            </li>
 
-        {% for produto in produtos %}
+            <li>
+                <a href="/estoque">
+                    📦 Estoque
+                </a>
+            </li>
 
-            <div class="produto-item">
+            <li>
+                <a href="/gestao">
+                    ⚙️ Gestão
+                </a>
+            </li>
 
-                <h3>
+        </ul>
 
-                    {{ produto.nome }}
+    </div>
 
-                </h3>
+    <!-- MAIN -->
 
-                <strong>
+    <div class="main produtos-page">
 
-                    💰 R$ {{ produto.preco }}
+        <div class="topo-produtos">
 
-                </strong>
+            <div>
 
-                <br>
+                <h1>
+                    📦 Produtos
+                </h1>
+
+                <p class="subtitulo-produtos">
+                    Gerencie seu estoque e produtos cadastrados
+                </p>
+
+            </div>
+
+            <a href="/novo-produto">
+
+                <button>
+                    ➕ Novo Produto
+                </button>
+
+            </a>
+
+        </div>
+
+        <!-- PESQUISA -->
+
+        <input
+            type="text"
+            id="pesquisa"
+            placeholder="🔍 Pesquisar produto...">
+
+        <!-- TABELA -->
+
+        <div class="tabela-produtos">
+
+            <div class="linha-cabecalho">
+
+                <span>Produto</span>
+                <span>Preço</span>
+                <span>Estoque</span>
+                <span>Status</span>
+                <span>Ações</span>
+
+            </div>
+
+            {% for produto in produtos %}
+
+            <div class="linha-produto">
+
+                <span class="nome-produto">
+
+                    📦 {{ produto.nome }}
+
+                </span>
+
+                <span class="preco-produto">
+
+                    R$ {{ produto.preco }}
+
+                </span>
+
+                <span>
+
+                    {{ produto.estoque }}
+
+                </span>
+
+                <span>
 
                     {% if produto.estoque == 0 %}
 
-                        <span
-                        style="color:gray; font-weight:bold;">
-
-                            ⚪ Estoque não cadastrado
-
+                        <span class="status status-zero">
+                            Sem estoque
                         </span>
 
                     {% elif produto.estoque <= produto.estoque_minimo %}
 
-                        <span
-                        style="color:red; font-weight:bold;">
-
-                            🚨 Estoque baixo:
-                            {{ produto.estoque }}
-
+                        <span class="status status-baixo">
+                            Estoque baixo
                         </span>
 
                     {% else %}
 
-                        <span>
-
-                            📦 Estoque:
-                            {{ produto.estoque }}
-
+                        <span class="status status-ok">
+                            Em estoque
                         </span>
 
                     {% endif %}
-                    
 
-                <div class="acoes-produto">
+                </span>
 
-                    <a
-                    href="/editar-produto/{{ produto.id }}">
+                <span class="acoes-tabela">
 
-                        <button>
-
-                            ✏️ Editar
-
-                        </button>
-
+                    <a href="/editar-produto/{{ produto.id }}">
+                        ✏️
                     </a>
 
                     <a
                     href="/excluir-produto/{{ produto.id }}"
-
                     onclick="return confirm('Tem certeza que deseja excluir este produto?')">
 
-                        <button>
-
-                            🗑 Excluir
-
-                        </button>
+                        🗑
 
                     </a>
 
-                </div>
+                </span>
 
             </div>
 
-        {% endfor %}
+            {% endfor %}
+
+        </div>
 
     </div>
-
-    <br>
-
-    <a href="/dashboard">
-
-        <button>
-
-            ⬅ Voltar
-
-        </button>
-
-    </a>
 
 </div>
 
 <script>
 
-const pesquisa =
-document.getElementById("pesquisa")
+const pesquisa = document.getElementById("pesquisa");
 
 pesquisa.addEventListener("input", () => {
 
-    const valor =
-    pesquisa.value.toLowerCase()
+    const valor = pesquisa.value.toLowerCase();
 
-    const produtos =
-    document.querySelectorAll(".produto-item")
+    const produtos = document.querySelectorAll(".linha-produto");
 
     produtos.forEach(produto => {
 
-        const texto =
-        produto.innerText.toLowerCase()
+        const texto = produto.innerText.toLowerCase();
 
         if(texto.includes(valor)){
 
-            produto.style.display = "flex"
+            produto.style.display = "grid";
 
         }
         else{
 
-            produto.style.display = "none"
+            produto.style.display = "none";
 
         }
 
-    })
+    });
 
-})
+});
 
 </script>
 

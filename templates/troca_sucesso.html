@@ -13,44 +13,58 @@
 
 <body>
 
-<div class="container">
+<div class="sucesso-container">
 
-    <h1>✅ Troca realizada!</h1>
+    <div class="card-sucesso">
 
-    {% if diferenca > 0 %}
+        <h1>
+            ✅ Troca realizada!
+        </h1>
 
-        <h2>
-            Cliente deve pagar:
-            R$ {{ diferenca }}
-        </h2>
+        {% if diferenca > 0 %}
 
-    {% elif diferenca < 0 %}
+            <div class="resultado-troca resultado-pagar">
 
-    <h2>
-        🎁 Crédito restante:
-        R$ {{ diferenca * -1 }}
-    </h2>
+                Cliente deve pagar:
+                R$ {{ diferenca }}
 
-    <p>
-        O cliente pode usar esse valor
-        em outra compra.
-    </p>
+            </div>
 
-    {% else %}
+        {% elif diferenca < 0 %}
 
-        <h2>
-            Troca sem diferença.
-        </h2>
+            <div class="resultado-troca resultado-credito">
 
-    {% endif %}
+                🎁 Crédito restante:
+                R$ {{ diferenca * -1 }}
 
-    <a href="/historico">
+            </div>
 
-        <button>
-            ⬅ Voltar
-        </button>
+            <p class="texto-credito">
 
-    </a>
+                O cliente pode utilizar esse valor
+                em outra compra futuramente.
+
+            </p>
+
+        {% else %}
+
+            <div class="resultado-troca resultado-neutro">
+
+                🔄 Troca sem diferença de valor
+
+            </div>
+
+        {% endif %}
+
+        <a href="/historico">
+
+            <button>
+                ⬅ Voltar ao histórico
+            </button>
+
+        </a>
+
+    </div>
 
 </div>
 
