@@ -108,35 +108,59 @@ def produtos():
 @app.route("/salvar-venda", methods=["POST"])
 def salvar_venda():
 
-    carrinho_json = request.form.get(
-        "carrinho"
-    )
+    global dados
+
+    dados = carregar_dados()
+
+    carrinho_json = request.form.get("carrinho")
 
     if not carrinho_json:
-
         return "❌ Carrinho vazio"
 
-    carrinho = json.loads(
-        carrinho_json
-    )
+    carrinho = json.loads(carrinho_json)
 
-    pagamento = request.form["pagamento"]
+    pagamento1 = request.form.get("pagamento1")
+    valor1 = request.form.get("valor1")
+
+    pagamento2 = request.form.get("pagamento2")
+    valor2 = request.form.get("valor2")
+
+    pagamentos = []
+
+    if pagamento1:
+
+        pagamentos.append({
+            "tipo": pagamento1,
+            "valor": float(valor1 or 0)
+        })
+
+    if pagamento2:
+
+        pagamentos.append({
+            "tipo": pagamento2,
+            "valor": float(valor2 or 0)
+        })
+
+    if len(pagamentos) == 1:
+        pagamento = pagamentos[0]["tipo"]
+    else:
+        pagamento = "Pagamento Misto"
 
     total_geral = 0
-
     itens = []
 
     for item in carrinho:
 
         produto_encontrado = None
 
-        for produto in dados["produtos"]:
+        nome_produto = (
+            item["nome"]
+            .split(" - R$")
+            [0]
+            .strip()
+        )
 
-            nome_produto = (
-                item["nome"]
-                .split(" - R$")[0]
-                .strip()
-            )
+        for produto in dados["produtos"]:
 
             if produto["nome"] == nome_produto:
 
@@ -150,14 +174,9 @@ def salvar_venda():
             {item['nome']}
             """
 
-        # Só verifica estoque se ele for maior que 0
         if produto_encontrado["estoque"] > 0:
 
-            if (
-                item["quantidade"]
-                >
-                produto_encontrado["estoque"]
-            ):
+            if item["quantidade"] > produto_encontrado["estoque"]:
 
                 return f"""
                 ❌ Estoque insuficiente para:
@@ -182,7 +201,6 @@ def salvar_venda():
             item["quantidade"]
         )
 
-        # Só desconta estoque se ele for maior que 0
         if produto_encontrado["estoque"] > 0:
 
             produto_encontrado["estoque"] -= (
@@ -207,6 +225,21 @@ def salvar_venda():
 
         })
 
+    # valida somente pagamento misto
+
+    if pagamento2:
+
+        total_pagamentos = sum(
+            p["valor"]
+            for p in pagamentos
+        )
+
+        diferenca = round(
+            total_pagamentos - total_geral,
+            2
+        )
+
+
     venda = {
 
         "id":
@@ -220,6 +253,9 @@ def salvar_venda():
 
         "pagamento":
         pagamento,
+
+        "pagamentos":
+        pagamentos,
 
         "data":
         datetime.now().strftime(
@@ -398,7 +434,10 @@ def historico():
 
     vendas_ordenadas = sorted(
         dados["vendas"],
-        key=lambda v: v["data"],
+        key=lambda v: datetime.strptime(
+            v["data"],
+            "%d/%m/%Y %H:%M"
+        ),
         reverse=True
     )
 

@@ -86,26 +86,99 @@
                     name="carrinho"
                     id="carrinho-input">
 
-                <select name="pagamento" required>
+                <h3>💳 Pagamento</h3>
 
-                    <option value="Pix">Pix</option>
-                    <option value="Dinheiro">Dinheiro</option>
-                    <option value="Débito">Débito</option>
+                <div
+                    id="primeiro-pagamento-completo"
+                    style="
+                        display:flex;
+                        gap:10px;
+                        margin-top:10px;
+                        align-items:center;
+                    ">
 
-                    <option value="Crédito 1x">Crédito 1x</option>
-                    <option value="Crédito 2x">Crédito 2x</option>
-                    <option value="Crédito 3x">Crédito 3x</option>
-                    <option value="Crédito 4x">Crédito 4x</option>
-                    <option value="Crédito 5x">Crédito 5x</option>
-                    <option value="Crédito 6x">Crédito 6x</option>
-                    <option value="Crédito 7x">Crédito 7x</option>
-                    <option value="Crédito 8x">Crédito 8x</option>
-                    <option value="Crédito 9x">Crédito 9x</option>
-                    <option value="Crédito 10x">Crédito 10x</option>
-                    <option value="Crédito 11x">Crédito 11x</option>
-                    <option value="Crédito 12x">Crédito 12x</option>
+                    <select id="pagamento1" name="pagamento1" required>
 
-                </select>
+                        <option value="">Selecione</option>
+
+                        <option value="Pix">Pix</option>
+                        <option value="Dinheiro">Dinheiro</option>
+                        <option value="Débito">Débito</option>
+
+                        <option value="Crédito 1x">Crédito 1x</option>
+                        <option value="Crédito 2x">Crédito 2x</option>
+                        <option value="Crédito 3x">Crédito 3x</option>
+                        <option value="Crédito 4x">Crédito 4x</option>
+                        <option value="Crédito 5x">Crédito 5x</option>
+                        <option value="Crédito 6x">Crédito 6x</option>
+                        <option value="Crédito 7x">Crédito 7x</option>
+                        <option value="Crédito 8x">Crédito 8x</option>
+                        <option value="Crédito 9x">Crédito 9x</option>
+                        <option value="Crédito 10x">Crédito 10x</option>
+                        <option value="Crédito 11x">Crédito 11x</option>
+                        <option value="Crédito 12x">Crédito 12x</option>
+
+                    </select>
+
+                    <input
+                        type="number"
+                        step="0.01"
+                        id="valor1"
+                        name="valor1"
+                        placeholder="Valor da primeira forma"
+                        style="display:none;">
+
+                </div>
+
+                <button
+                    type="button"
+                    id="btn-segundo-pagamento"
+                    onclick="mostrarSegundoPagamento()">
+
+                    ➕ Adicionar segunda forma
+
+                </button>
+
+                <div
+                    id="segundo-pagamento"
+                    style="
+                    display:none;
+                    gap:10px;
+                    margin-top:10px;
+                    align-items:center;
+                    ">
+
+                    <select id="pagamento2" name="pagamento2">
+
+                        <option value="">Selecione</option>
+
+                        <option value="Pix">Pix</option>
+                        <option value="Dinheiro">Dinheiro</option>
+                        <option value="Débito">Débito</option>
+
+                        <option value="Crédito 1x">Crédito 1x</option>
+                        <option value="Crédito 2x">Crédito 2x</option>
+                        <option value="Crédito 3x">Crédito 3x</option>
+                        <option value="Crédito 4x">Crédito 4x</option>
+                        <option value="Crédito 5x">Crédito 5x</option>
+                        <option value="Crédito 6x">Crédito 6x</option>
+                        <option value="Crédito 7x">Crédito 7x</option>
+                        <option value="Crédito 8x">Crédito 8x</option>
+                        <option value="Crédito 9x">Crédito 9x</option>
+                        <option value="Crédito 10x">Crédito 10x</option>
+                        <option value="Crédito 11x">Crédito 11x</option>
+                        <option value="Crédito 12x">Crédito 12x</option>
+
+                    </select>
+
+                    <input
+                        type="number"
+                        step="0.01"
+                        id="valor2"
+                        name="valor2"
+                        placeholder="Valor da segunda forma">
+
+                </div>
 
                 <h2 id="total">Total: R$ 0</h2>
 
@@ -221,42 +294,156 @@ function atualizarCarrinho(){
 
 function finalizarVenda(event){
 
-    event.preventDefault()
+    event.preventDefault();
 
     if(carrinho.length === 0){
 
-        alert("Adicione um produto!")
+        alert("Adicione um produto!");
 
-        return false
+        return false;
     }
 
-    // botão loading
+    const segundoPagamento =
+    document.getElementById("segundo-pagamento");
+
+    if(segundoPagamento.style.display === "flex"){
+
+        const valor1 =
+        parseFloat(
+            document.getElementById("valor1").value || 0
+        );
+
+        const valor2 =
+        parseFloat(
+            document.getElementById("valor2").value || 0
+        );
+
+        const soma =
+        valor1 + valor2;
+
+        if(soma > total){
+
+            alert(
+                `Sobrou R$ ${(soma - total).toFixed(2)}`
+            );
+
+            return false;
+        }
+
+        if(soma < total){
+
+            alert(
+                `Falta R$ ${(total - soma).toFixed(2)}`
+            );
+
+            return false;
+        }
+
+    }
 
     const botao =
-    document.getElementById("btn-finalizar")
+    document.getElementById("btn-finalizar");
 
-    botao.disabled = true
+    botao.disabled = true;
 
-    botao.innerText = "⏳ Processando..."
-
-    // mostra popup
+    botao.innerText = "⏳ Processando...";
 
     document
     .getElementById("popup-sucesso")
-    .classList.add("mostrar-popup")
-
-    // envia depois
+    .classList.add("mostrar-popup");
 
     setTimeout(() => {
 
         document
         .getElementById("form-venda")
-        .submit()
+        .submit();
 
-    }, 1600)
+    }, 1600);
 
-    return false
+    return false;
 }
+
+function mostrarSegundoPagamento(){
+
+    document
+    .getElementById("segundo-pagamento")
+    .style.display = "flex";
+
+    document
+    .getElementById("valor1")
+    .style.display = "block";
+
+    document
+    .getElementById("btn-segundo-pagamento")
+    .innerText = "➖ Remover segunda forma";
+
+    document
+    .getElementById("btn-segundo-pagamento")
+    .onclick = esconderSegundoPagamento;
+}
+
+function esconderSegundoPagamento(){
+
+    document
+    .getElementById("segundo-pagamento")
+    .style.display = "none";
+
+    document
+    .getElementById("valor1")
+    .style.display = "none";
+
+    document
+    .getElementById("valor1").value = "";
+
+    document
+    .getElementById("valor2").value = "";
+
+    document
+    .getElementById("pagamento2").value = "";
+
+    document
+    .getElementById("btn-segundo-pagamento")
+    .innerText = "➕ Adicionar segunda forma";
+
+    document
+    .getElementById("btn-segundo-pagamento")
+    .onclick = mostrarSegundoPagamento;
+}
+
+document
+.getElementById("form-venda")
+.addEventListener("submit", function(e){
+
+    const segundoPagamento =
+    document.getElementById("segundo-pagamento");
+
+    if(segundoPagamento.style.display === "flex"){
+
+        const valor1 =
+        parseFloat(
+            document.getElementById("valor1").value || 0
+        );
+
+        const valor2 =
+        parseFloat(
+            document.getElementById("valor2").value || 0
+        );
+
+        const soma = valor1 + valor2;
+
+        if(soma !== total){
+
+            alert(
+                `Os pagamentos somam R$ ${soma.toFixed(2)} e o total da venda é R$ ${total.toFixed(2)}`
+            );
+
+            e.preventDefault();
+            return false;
+        }
+
+    }
+
+});
 
 </script>
 
