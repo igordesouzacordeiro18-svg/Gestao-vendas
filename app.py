@@ -12,18 +12,50 @@ def login():
 @app.route("/dashboard")
 def dashboard():
 
+    global dados
+
+    dados = carregar_dados()
+
     total_vendas = len(dados["vendas"])
 
     total_produtos = len(dados["produtos"])
 
-    valor_total = sum(
-        venda["total"]
-        for venda in dados["vendas"]
-    )
+    if dados["caixa"]["aberto"]:
 
-    ultimas_vendas = list(
-        reversed(dados["vendas"])
-    )[:5]
+        valor_total = (
+            dados["caixa"]["valor_inicial"]
+            +
+            dados["caixa"]["vendas_periodo"]
+        )
+
+    else:
+
+        valor_total = 0
+
+    ultimas_vendas = []
+
+    if dados["caixa"]["aberto"]:
+
+        data_abertura = datetime.strptime(
+            dados["caixa"]["data_abertura"],
+            "%d/%m/%Y %H:%M"
+        )
+
+        vendas_periodo = []
+
+        for venda in dados["vendas"]:
+
+            data_venda = datetime.strptime(
+                venda["data"],
+                "%d/%m/%Y %H:%M"
+            )
+
+            if data_venda >= data_abertura:
+                vendas_periodo.append(venda)
+
+        ultimas_vendas = list(
+            reversed(vendas_periodo)
+        )[:5]
 
     contador = {}
 
@@ -111,6 +143,15 @@ def salvar_venda():
     global dados
 
     dados = carregar_dados()
+
+    if not dados["caixa"]["aberto"]:
+
+        return """
+        <script>
+            alert('❌ Abra o caixa antes de realizar uma venda.');
+            window.location.href='/caixa';
+        </script>
+        """
 
     carrinho_json = request.form.get("carrinho")
 
@@ -264,6 +305,10 @@ def salvar_venda():
     }
 
     dados["vendas"].append(venda)
+
+    if dados["caixa"]["aberto"]:
+
+        dados["caixa"]["vendas_periodo"] += total_geral
 
     salvar_dados(dados)
 
@@ -419,6 +464,8 @@ def atualizar_produto(id):
 @app.route("/nova-venda")
 def nova_venda():
 
+    dados = carregar_dados()
+
     produtos_ordenados = sorted(
         dados["produtos"],
         key=lambda p: p["nome"].lower()
@@ -426,7 +473,8 @@ def nova_venda():
 
     return render_template(
         "nova_venda.html",
-        produtos=produtos_ordenados
+        produtos=produtos_ordenados,
+        caixa_aberto=dados["caixa"]["aberto"]
     )
 
 @app.route("/historico")
@@ -455,6 +503,18 @@ def historico():
 
 @app.route("/relatorios")
 def relatorios():
+
+    return render_template(
+        "central_relatorios.html"
+    )
+
+
+@app.route("/relatorio-financeiro")
+def relatorio_financeiro():
+
+    global dados
+
+    dados = carregar_dados()
 
     filtro = request.args.get("filtro", "hoje")
 
@@ -533,7 +593,7 @@ def relatorios():
             lucro += item.get("lucro", 0)
 
     return render_template(
-        "relatorios.html",
+        "relatorio_financeiro.html",
         total=total,
         pix=pix,
         dinheiro=dinheiro,
@@ -541,6 +601,50 @@ def relatorios():
         lucro=lucro
     )
 
+@app.route("/relatorio-caixa")
+def relatorio_caixa():
+
+    dados = carregar_dados()
+
+    return render_template(
+        "relatorio_caixa.html",
+        historico_caixa=dados["historico_caixa"]
+    )
+
+
+@app.route("/relatorio-graficos")
+def relatorio_graficos():
+
+    dados = carregar_dados()
+
+    pix = sum(
+        venda["total"]
+        for venda in dados["vendas"]
+        if venda["pagamento"] == "Pix"
+    )
+
+    dinheiro = sum(
+        venda["total"]
+        for venda in dados["vendas"]
+        if venda["pagamento"] == "Dinheiro"
+    )
+
+    cartao = sum(
+        venda["total"]
+        for venda in dados["vendas"]
+        if (
+            venda["pagamento"] == "Débito"
+            or
+            "Crédito" in venda["pagamento"]
+        )
+    )
+
+    return render_template(
+        "relatorio_graficos.html",
+        pix=pix,
+        dinheiro=dinheiro,
+        cartao=cartao
+    )
 
 
 @app.route("/troca/<int:id>")
@@ -881,15 +985,119 @@ def salvar_gestao(id):
 
     return redirect("/gestao")
 
-ARQUIVO = "dados.json"
 
+@app.route("/caixa")
+def caixa():
+
+    global dados
+
+    dados = carregar_dados()
+
+    return render_template(
+        "caixa.html",
+        caixa=dados["caixa"]
+    )
+
+@app.route("/abrir-caixa", methods=["POST"])
+def abrir_caixa():
+
+    dados = carregar_dados()
+
+    valor = float(
+        request.form["valor_inicial"]
+    )
+
+    dados["caixa"] = {
+
+    "aberto": True,
+
+    "valor_inicial": valor,
+
+    "data_abertura":
+    datetime.now().strftime(
+        "%d/%m/%Y %H:%M"
+    ),
+
+    "vendas_periodo": 0
+}
+
+    salvar_dados(dados)
+
+    return redirect("/caixa")
+
+@app.route("/fechar-caixa", methods=["POST"])
+def fechar_caixa():
+
+    dados = carregar_dados()
+
+    caixa = dados["caixa"]
+
+    vendas_do_periodo = caixa["vendas_periodo"]
+
+    saldo_final = (
+        caixa["valor_inicial"]
+        +
+        vendas_do_periodo
+    )
+
+    dados["historico_caixa"].append({
+
+        "data_abertura":
+        caixa["data_abertura"],
+
+        "data_fechamento":
+        datetime.now().strftime(
+            "%d/%m/%Y %H:%M"
+        ),
+
+        "valor_inicial":
+        caixa["valor_inicial"],
+
+        "vendas":
+        vendas_do_periodo,
+
+        "saldo_final":
+        saldo_final
+    })
+
+    dados["caixa"] = {
+
+        "aberto": False,
+
+        "valor_inicial": 0,
+
+        "data_abertura": "",
+
+        "vendas_periodo": 0
+    }
+
+    if len(dados["historico_caixa"]) > 100:
+
+        dados["historico_caixa"] = (
+            dados["historico_caixa"][-100:]
+        )
+
+    salvar_dados(dados)
+
+    return redirect("/caixa")
+
+ARQUIVO = "dados.json"
 
 def carregar_dados():
     try:
         with open(ARQUIVO, "r", encoding="utf-8") as f:
             return json.load(f)
     except:
-        return {"produtos": [], "vendas": []}
+        return {
+            "produtos": [],
+            "vendas": [],
+            "caixa": {
+                "aberto": False,
+                "valor_inicial": 0,
+                "data_abertura": ""
+            },
+            "historico_caixa": []
+        }
 
 
 def salvar_dados(dados):
@@ -898,6 +1106,18 @@ def salvar_dados(dados):
 
 
 dados = carregar_dados()
+
+if "caixa" not in dados:
+    dados["caixa"] = {
+        "aberto": False,
+        "valor_inicial": 0,
+        "data_abertura": ""
+    }
+
+if "historico_caixa" not in dados:
+    dados["historico_caixa"] = []
+
+salvar_dados(dados)
 
 for i, venda in enumerate(dados["vendas"]):
 

@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport"
+    content="width=device-width, initial-scale=1.0">
+
+    <title>Histórico de Caixa</title>
+
+    <link rel="stylesheet"
+    href="{{ url_for('static', filename='style.css') }}">
+
+</head>
+
+<body>
+
+<div class="layout">
+
+    <div class="sidebar">
+
+        <h2>🛍️ Loja</h2>
+
+        <ul>
+
+            <li><a href="/dashboard">📊 Início</a></li>
+            <li><a href="/produtos">📦 Produtos</a></li>
+            <li><a href="/nova-venda">💰 Nova venda</a></li>
+            <li><a href="/historico">🧾 Histórico</a></li>
+            <li><a href="/caixa">💵 Caixa</a></li>
+            <li><a href="/lucro">📈 Lucro</a></li>
+            <li><a href="/relatorios">📊 Relatórios</a></li>
+            <li><a href="/estoque">📦 Estoque</a></li>
+            <li><a href="/gestao">⚙️ Gestão</a></li>
+
+        </ul>
+
+    </div>
+
+    <div class="main">
+
+        <h1>💵 Histórico de Caixa</h1>
+
+        <div class="banner-relatorio">
+
+            <h2>
+                📋 Fechamentos Registrados
+            </h2>
+
+            <p>
+                Exibindo os últimos 100 fechamentos.
+            </p>
+
+        </div>
+
+        <table class="tabela-caixa">
+
+            <tr>
+
+                <th>Abertura</th>
+                <th>Fechamento</th>
+                <th>Valor Inicial</th>
+                <th>Vendas</th>
+                <th>Saldo Final</th>
+
+            </tr>
+
+            {% for caixa in historico_caixa|reverse %}
+
+            <tr>
+
+                <td>{{ caixa.data_abertura }}</td>
+
+                <td>{{ caixa.data_fechamento }}</td>
+
+                <td>R$ {{ caixa.valor_inicial }}</td>
+
+                <td>R$ {{ caixa.vendas }}</td>
+
+                <td>
+                    <strong>
+                        R$ {{ caixa.saldo_final }}
+                    </strong>
+                </td>
+
+            </tr>
+
+            {% endfor %}
+
+        </table>
+
+    </div>
+
+</div>
+
+</body>
+</html>

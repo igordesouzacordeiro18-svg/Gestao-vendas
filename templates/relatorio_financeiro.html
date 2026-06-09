@@ -47,8 +47,20 @@
             </li>
 
             <li>
+                <a href="/caixa">
+                    💵 Caixa
+                </a>
+            </li>
+
+            <li>
+                <a href="/lucro">
+                     📈 Lucro
+                </a> 
+            </li> 
+
+            <li>
                 <a href="/relatorios">
-                    📈 Relatórios
+                    📊 Relatórios
                 </a>
             </li>
 
@@ -58,12 +70,8 @@
                 </a>
             </li>
 
-            <li>
-                <a href="/lucro">
-                     💵 Lucro
-                </a> 
-            </li> 
             
+        
             <li> 
                 <a href="/gestao">
                      ⚙️ Gestão
@@ -78,21 +86,33 @@
 
         <h1>📈 Relatórios Financeiros</h1>
 
+        <div class="banner-relatorio">
+
+            <h2>
+                💰 Resumo Financeiro
+            </h2>
+
+            <p>
+                Acompanhe o desempenho financeiro da loja por período.
+            </p>
+
+        </div>
+
         <div class="filtros-relatorio">
 
-            <a href="/relatorios?filtro=hoje">
+            <a href="/relatorio-financeiro?filtro=hoje">
                 <button>📅 Hoje</button>
             </a>
 
-            <a href="/relatorios?filtro=semana">
+            <a href="/relatorio-financeiro?filtro=semana">
                 <button>🗓️ Semana</button>
             </a>
 
-            <a href="/relatorios?filtro=mes">
+            <a href="/relatorio-financeiro?filtro=mes">
                 <button>📆 Mês</button>
             </a>
 
-            <a href="/relatorios?filtro=ano">
+            <a href="/relatorio-financeiro?filtro=ano">
                 <button>📊 Ano</button>
             </a>
 
@@ -100,47 +120,55 @@
 
         <div class="cards">
 
-            <div class="card">
-                <h3>💰 Total vendido</h3>
-                <p>
+            <div class="card card-total">
+
+                <h3>💰 Total Vendido</h3>
+
+                <p class="valor-card">
                     R$ {{ total }}
                 </p>
+
             </div>
 
-            <div class="card">
+            <div class="card card-pix">
+
                 <h3>💳 PIX</h3>
-                <p>
+
+                <p class="valor-card">
                     R$ {{ pix }}
                 </p>
+
             </div>
 
-            <div class="card">
+            <div class="card card-dinheiro">
+
                 <h3>💵 Dinheiro</h3>
-                <p>
+
+                <p class="valor-card">
                     R$ {{ dinheiro }}
                 </p>
+
             </div>
 
-            <div class="card">
+            <div class="card card-cartao">
 
                 <h3>💳 Cartão</h3>
-                <p>
+
+                <p class="valor-card">
                     R$ {{ cartao }}
                 </p>
+
             </div>
 
-            <div class="card">
+            <div class="card card-lucro">
 
-                <h3>
-                    📈 Lucro
-                </h3>
+                <h3>📈 Lucro</h3>
 
-                <p>
+                <p class="valor-card">
                     R$ {{ lucro }}
                 </p>
 
             </div>
-
 
         </div>
 

@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport"
+    content="width=device-width, initial-scale=1.0">
+
+    <title>Central de Relatórios</title>
+
+    <link rel="stylesheet"
+    href="{{ url_for('static', filename='style.css') }}">
+
+</head>
+
+<body>
+
+<div class="layout">
+
+    <div class="sidebar">
+
+        <h2>🛍️ Loja</h2>
+
+        <ul>
+
+            <li><a href="/dashboard">📊 Início</a></li>
+            <li><a href="/produtos">📦 Produtos</a></li>
+            <li><a href="/nova-venda">💰 Nova venda</a></li>
+            <li><a href="/historico">🧾 Histórico</a></li>
+            <li><a href="/caixa">💵 Caixa</a></li>
+            <li><a href="/lucro">📈 Lucro</a></li>
+            <li><a href="/relatorios">📊 Relatórios</a></li>
+            <li><a href="/estoque">📦 Estoque</a></li>
+            <li><a href="/gestao">⚙️ Gestão</a></li>
+
+        </ul>
+
+    </div>
+
+    <div class="main">
+
+        <h1>📊 Central de Relatórios</h1>
+
+        <div class="cards-relatorios">
+
+            <a
+                href="/relatorio-financeiro"
+                class="card-relatorio">
+
+                <h2>💰 Financeiro</h2>
+
+                <p>
+                    Vendas, lucro e formas de pagamento
+                </p>
+
+            </a>
+
+            <a
+                href="/relatorio-caixa"
+                class="card-relatorio">
+
+                <h2>💵 Histórico de Caixa</h2>
+
+                <p>
+                    Aberturas, fechamentos e saldo diário
+                </p>
+
+            </a>
+
+            <a
+                href="/relatorio-graficos"
+                class="card-relatorio">
+
+                <h2>📈 Gráficos</h2>
+
+                <p>
+                    Visualize o desempenho da loja
+                </p>
+
+            </a>
+
+            <a
+                href="/relatorio-produtos"
+                class="card-relatorio">
+
+                <h2>🏆 Produtos</h2>
+
+                <p>
+                    Produtos mais vendidos e rentáveis
+                </p>
+
+            </a>
+
+        </div>
+
+    </div>
+
+</div>
+
+</body>
+</html>

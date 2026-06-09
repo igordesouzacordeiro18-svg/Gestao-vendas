@@ -29,6 +29,7 @@
             <li><a href="/produtos">📦 Produtos</a></li>
             <li><a href="/nova-venda">💰 Nova venda</a></li>
             <li><a href="/historico">🧾 Histórico</a></li>
+            <li><a href="/caixa">💵 Caixa</a></li>
             <li><a href="/lucro">📈 Lucro</a></li>
             <li><a href="/relatorios">📊 Relatórios</a></li>
             <li><a href="/estoque">📦 Estoque</a></li>
@@ -218,6 +219,13 @@
 
 <script>
 
+const caixaAberto =
+{{ caixa_aberto|tojson }};
+
+</script>
+
+<script>
+
 let total = 0;
 let carrinho = [];
 
@@ -295,6 +303,15 @@ function atualizarCarrinho(){
 function finalizarVenda(event){
 
     event.preventDefault();
+
+    if(!caixaAberto){
+
+        alert(
+            "❌ Abra o caixa antes de realizar uma venda."
+        );
+
+        return false;
+    }
 
     if(carrinho.length === 0){
 
