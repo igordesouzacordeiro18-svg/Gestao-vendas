@@ -1086,6 +1086,9 @@ select{
 .card-lucro{
 
     border-left:6px solid #8b5cf6;
+
+    background:#faf7ff;
+
 }
 
 .grafico-pizza-container{
@@ -1100,29 +1103,183 @@ select{
 
 .card-financeiro{
 
-    background: white;
+    background:white;
 
-    border-radius: 20px;
+    border-radius:22px;
 
-    padding: 25px;
+    padding:28px;
 
-    min-width: 220px;
+    min-width:240px;
 
     box-shadow:
-    0 4px 20px rgba(
-        0,0,0,0.08
-    );
+    0 10px 25px rgba(0,0,0,0.08);
+
+    transition:0.25s;
+
+}
+.card-financeiro:hover{
+
+    transform:translateY(-4px);
+
+    box-shadow:
+    0 15px 35px rgba(0,0,0,0.12);
 
 }
 
+
 .card-financeiro p{
 
-    color: #111827;
+    color:#1f2937;
 
-    font-size: 42px;
+    font-size:48px;
 
-    font-weight: bold;
+    font-weight:700;
 
-    margin-top: 15px;
+    margin-top:20px;
+
+}
+
+.acoes-pagina{
+
+    margin-bottom:20px;
+
+}
+
+.btn-voltar{
+
+    background:#2563eb;
+
+    color:white;
+
+    text-decoration:none;
+
+    padding:14px 22px;
+
+    border-radius:12px;
+
+    font-weight:600;
+
+    transition:0.2s;
+
+    box-shadow:
+    0 4px 12px rgba(37,99,235,0.25);
+
+}
+
+.btn-voltar:hover{
+
+    background:#1d4ed8;
+
+    transform:translateY(-2px);
+
+}
+
+.topo-pagina{
+
+    display:flex;
+
+    justify-content:space-between;
+
+    align-items:center;
+
+    margin-bottom:30px;
+
+}
+
+.filtros-relatorio button{
+
+    background:white;
+
+    color:#374151;
+
+    border:1px solid #d1d5db;
+
+    padding:12px 20px;
+
+    border-radius:10px;
+
+    font-weight:600;
+
+    cursor:pointer;
+
+    transition:0.2s;
+
+}
+
+.filtros-relatorio button:hover{
+
+    background:#2563eb;
+
+    color:white;
+
+}
+
+.input-quantidade{
+
+    width:120px;
+
+    padding:12px;
+
+    border-radius:10px;
+
+    border:1px solid #d1d5db;
+
+    font-size:16px;
+
+    text-align:center;
+
+}
+
+.resultado-troca{
+
+    padding:20px;
+
+    border-radius:15px;
+
+    text-align:center;
+
+    background:#f3f4f6;
+
+    margin-top:15px;
+
+}
+
+.item-troca{
+
+    display:flex;
+
+    justify-content:space-between;
+
+    align-items:center;
+
+    padding:12px;
+
+    margin-bottom:10px;
+
+    background:#f9fafb;
+
+    border-radius:10px;
+
+}
+
+.item-troca button{
+
+    background:#ef4444;
+
+    color:white;
+
+    border:none;
+
+    padding:8px 12px;
+
+    border-radius:8px;
+
+    cursor:pointer;
+
+}
+
+.item-troca button:hover{
+
+    background:#dc2626;
 
 }

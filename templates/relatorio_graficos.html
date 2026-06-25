@@ -40,7 +40,16 @@
 
     <div class="main">
 
-        <h1>📈 Painel de Gráficos</h1>
+
+        <div class="topo-pagina">
+
+            <h1>📈 Painel de Gráficos</h1>
+
+            <a href="/relatorios" class="btn-voltar">
+                ← Relatórios
+            </a>
+
+        </div>
 
         <div class="banner-relatorio">
 
@@ -106,19 +115,48 @@
 
         </div>
 
-        <div class="card">
+        
+        <div class="card" id="grafico-vendas">
 
             <h2>
-                📊 Comparativo por Forma de Pagamento
+                📈 Evolução das Vendas
             </h2>
 
-            <canvas
-                id="graficoPagamentos">
-            </canvas>
+            <div class="filtros-relatorio">
 
-        </div>
+                <a href="/relatorio-graficos?filtro=semana#grafico-vendas">
+                    <button>📅 Semana</button>
+                </a>
 
-        <br>
+                <a href="/relatorio-graficos?filtro=mes#grafico-vendas">
+                    <button>📆 Mês</button>
+                </a>
+
+                <a href="/relatorio-graficos?filtro=ano#grafico-vendas">
+                    <button>📊 Ano</button>
+                </a>
+
+            </div>
+
+            <br>
+
+                <canvas id="graficoLinha"></canvas>
+
+            </div>
+
+            <br>
+
+            <div class="card">
+
+                <h2>
+                    📅 Vendas por Dia da Semana
+                </h2>
+
+                <canvas id="graficoSemana"></canvas>
+
+            </div>
+
+            <br>
 
         <div class="card">
 
@@ -148,38 +186,6 @@ const dados = [
 
 ];
 
-new Chart(
-
-    document.getElementById(
-        "graficoPagamentos"
-    ),
-
-    {
-
-        type: "bar",
-
-        data: {
-
-            labels: [
-
-                "PIX",
-                "Dinheiro",
-                "Cartão"
-
-            ],
-
-            datasets: [{
-
-                label:
-                "Total Recebido",
-
-                data: dados
-
-            }]
-        }
-    }
-
-);
 
 new Chart(
 
@@ -232,6 +238,87 @@ new Chart(
     }
 
 );
+
+const ctxLinha =
+document.getElementById(
+    "graficoLinha"
+);
+
+new Chart(ctxLinha, {
+
+    type: "line",
+
+options: {
+
+    responsive: true,
+
+    plugins: {
+
+        legend: {
+
+            labels: {
+
+                font: {
+
+                    size: 16
+
+                }
+
+            }
+
+        }
+
+    }
+
+},
+
+    data: {
+
+        labels: {{ datas|tojson }},
+
+        datasets: [{
+
+            label: "Total Vendido",
+
+            data: {{ valores|tojson }},
+
+            tension: 0.3,
+
+            fill: false
+
+        }]
+    }
+});
+
+new Chart(
+
+    document.getElementById(
+        "graficoSemana"
+    ),
+
+    {
+
+        type: "bar",
+
+        data: {
+
+            labels:
+            {{ dias_semana|tojson }},
+
+            datasets: [{
+
+                label:
+                "Total Vendido",
+
+                data:
+                {{ valores_semana|tojson }}
+
+            }]
+        }
+    }
+
+);
+
 
 </script>
 

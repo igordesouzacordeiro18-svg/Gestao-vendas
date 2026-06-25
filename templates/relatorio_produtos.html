@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+
+<html lang="pt-br">
+
+<head>
+
+```
+<meta charset="UTF-8">
+
+<title>Relatório de Produtos</title>
+
+<link rel="stylesheet"
+href="{{ url_for('static', filename='style.css') }}">
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+```
+
+</head>
+
+<body>
+
+<div class="layout">
+
+```
+<div class="sidebar">
+
+    <h2>🛍️ Loja</h2>
+
+    <ul>
+
+        <li><a href="/dashboard">📊 Início</a></li>
+        <li><a href="/produtos">📦 Produtos</a></li>
+        <li><a href="/nova-venda">💰 Nova venda</a></li>
+        <li><a href="/historico">🧾 Histórico</a></li>
+        <li><a href="/caixa">💵 Caixa</a></li>
+        <li><a href="/lucro">📈 Lucro</a></li>
+        <li><a href="/relatorios">📊 Relatórios</a></li>
+        <li><a href="/estoque">📦 Estoque</a></li>
+        <li><a href="/gestao">⚙️ Gestão</a></li>
+
+    </ul>
+
+</div>
+
+<div class="main">
+
+    <div class="topo-pagina">
+
+        <h1>🏆 Relatório de Produtos</h1>
+
+        <a href="/relatorios" class="btn-voltar">
+            ← Relatórios
+        </a>
+
+    </div>
+
+    <div class="banner-relatorio">
+
+        <h2>
+            📦 Desempenho dos Produtos
+        </h2>
+
+        <p>
+            Acompanhe os produtos mais vendidos e os mais lucrativos.
+        </p>
+
+    </div>
+
+    <div class="card">
+
+        <h2>
+            🏆 Produtos Mais Vendidos
+        </h2>
+
+        <canvas id="graficoVendidos"></canvas>
+
+    </div>
+
+    <br>
+
+    <div class="card">
+
+        <h2>
+            💰 Produtos Mais Lucrativos
+        </h2>
+
+        <canvas id="graficoLucro"></canvas>
+
+    </div>
+
+</div>
+```
+
+</div>
+
+<script>
+
+new Chart(
+
+    document.getElementById(
+        "graficoVendidos"
+    ),
+
+    {
+
+        type: "bar",
+
+        data: {
+
+            labels:
+            {{ nomes_vendidos|tojson }},
+
+            datasets: [{
+
+                label:
+                "Quantidade Vendida",
+
+                data:
+                {{ quantidades_vendidas|tojson }}
+
+            }]
+        },
+
+        options: {
+
+            indexAxis: "y"
+
+        }
+
+    }
+
+);
+
+new Chart(
+
+    document.getElementById(
+        "graficoLucro"
+    ),
+
+    {
+
+        type: "bar",
+
+        data: {
+
+            labels:
+            {{ nomes_lucro|tojson }},
+
+            datasets: [{
+
+                label:
+                "Lucro (R$)",
+
+                data:
+                {{ valores_lucro|tojson }}
+
+            }]
+        },
+
+        options: {
+
+            indexAxis: "y"
+
+        }
+
+    }
+
+);
+
+</script>
+
+</body>
+</html>

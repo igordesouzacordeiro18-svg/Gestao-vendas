@@ -5,7 +5,7 @@
             "nome": "Camisa adul",
             "preco": 70.0,
             "custo": 25.0,
-            "estoque": 77,
+            "estoque": 61,
             "estoque_minimo": 20
         },
         {
@@ -13,7 +13,7 @@
             "nome": "Camisa inf",
             "preco": 45.0,
             "custo": 20.0,
-            "estoque": 79,
+            "estoque": 73,
             "estoque_minimo": 15
         },
         {
@@ -28,7 +28,7 @@
             "id": 6,
             "nome": "Short inf",
             "preco": 50.0,
-            "estoque": 8,
+            "estoque": 5,
             "estoque_minimo": 10,
             "custo": 20.0
         },
@@ -36,7 +36,7 @@
             "id": 7,
             "nome": "Short adul",
             "preco": 60.0,
-            "estoque": 0,
+            "estoque": 3,
             "estoque_minimo": 0,
             "custo": 25.0
         },
@@ -44,7 +44,7 @@
             "id": 8,
             "nome": "Bone inf",
             "preco": 40.0,
-            "estoque": 43,
+            "estoque": 42,
             "estoque_minimo": 20,
             "custo": 20.0
         },
@@ -66,11 +66,19 @@
         },
         {
             "id": 11,
-            "nome": "bobojaco adult",
-            "preco": 200.0,
+            "nome": "Bobojaco adult",
+            "preco": 220.0,
             "estoque": 0,
             "estoque_minimo": 0,
-            "custo": 0
+            "custo": 0.0
+        },
+        {
+            "id": 12,
+            "nome": "calcinha",
+            "preco": 20.0,
+            "estoque": 3,
+            "estoque_minimo": 10,
+            "custo": 10.0
         }
     ],
     "vendas": [
@@ -1218,13 +1226,306 @@
                 }
             ],
             "data": "08/06/2026 12:16"
+        },
+        {
+            "id": 55,
+            "itens": [
+                {
+                    "produto": "Camisa adul",
+                    "quantidade": 13,
+                    "subtotal": 910.0,
+                    "lucro": 585.0
+                }
+            ],
+            "total": 910.0,
+            "pagamento": "Pix",
+            "pagamentos": [
+                {
+                    "tipo": "Pix",
+                    "valor": 0.0
+                }
+            ],
+            "data": "08/06/2026 21:59"
+        },
+        {
+            "id": 56,
+            "itens": [
+                {
+                    "produto": "calcinha",
+                    "quantidade": 1,
+                    "subtotal": 20.0,
+                    "lucro": 10.0
+                }
+            ],
+            "total": 20.0,
+            "pagamento": "Dinheiro",
+            "pagamentos": [
+                {
+                    "tipo": "Dinheiro",
+                    "valor": 0.0
+                }
+            ],
+            "data": "10/06/2026 11:51"
+        },
+        {
+            "id": 57,
+            "itens": [
+                {
+                    "produto": "calcinha",
+                    "quantidade": 1,
+                    "subtotal": 20.0,
+                    "lucro": 10.0
+                }
+            ],
+            "total": 20.0,
+            "pagamento": "Pix",
+            "pagamentos": [
+                {
+                    "tipo": "Pix",
+                    "valor": 0.0
+                }
+            ],
+            "data": "10/06/2026 11:51"
+        },
+        {
+            "id": 58,
+            "itens": [
+                {
+                    "produto": "Bobojaco adult",
+                    "quantidade": 1,
+                    "subtotal": 200.0,
+                    "lucro": 200.0
+                },
+                {
+                    "produto": "Bobojaco adult",
+                    "quantidade": 5,
+                    "subtotal": 1000.0,
+                    "lucro": 1000.0
+                }
+            ],
+            "total": 1200.0,
+            "pagamento": "Dinheiro",
+            "pagamentos": [
+                {
+                    "tipo": "Dinheiro",
+                    "valor": 0.0
+                }
+            ],
+            "data": "10/06/2026 12:17"
+        },
+        {
+            "id": 59,
+            "itens": [
+                {
+                    "produto": "Bobojaco adult",
+                    "quantidade": 5,
+                    "subtotal": 1000.0,
+                    "lucro": 1000.0
+                }
+            ],
+            "total": 1000.0,
+            "pagamento": "Crédito 3x",
+            "pagamentos": [
+                {
+                    "tipo": "Crédito 3x",
+                    "valor": 0.0
+                }
+            ],
+            "data": "10/06/2026 12:42"
+        },
+        {
+            "id": 60,
+            "itens": [
+                {
+                    "produto": "Bobojaco adult",
+                    "quantidade": 1,
+                    "subtotal": 200.0,
+                    "lucro": 200.0
+                }
+            ],
+            "total": 200.0,
+            "pagamento": "Dinheiro",
+            "pagamentos": [
+                {
+                    "tipo": "Dinheiro",
+                    "valor": 0.0
+                }
+            ],
+            "data": "12/06/2026 11:21"
+        },
+        {
+            "id": 61,
+            "itens": [
+                {
+                    "produto": "Bobojaco adult",
+                    "quantidade": 1,
+                    "subtotal": 200.0,
+                    "lucro": 200.0
+                },
+                {
+                    "produto": "Bone inf",
+                    "quantidade": 1,
+                    "subtotal": 40.0,
+                    "lucro": 20.0
+                },
+                {
+                    "produto": "calcinha",
+                    "quantidade": 5,
+                    "subtotal": 100.0,
+                    "lucro": 50.0
+                },
+                {
+                    "produto": "Bobojaco adult",
+                    "quantidade": 5,
+                    "subtotal": 1000.0,
+                    "lucro": 1000.0
+                }
+            ],
+            "total": 1340.0,
+            "pagamento": "Pagamento Misto",
+            "pagamentos": [
+                {
+                    "tipo": "Crédito 2x",
+                    "valor": 1000.0
+                },
+                {
+                    "tipo": "Pix",
+                    "valor": 340.0
+                }
+            ],
+            "data": "12/06/2026 11:22"
+        },
+        {
+            "id": 62,
+            "itens": [
+                {
+                    "produto": "Bobojaco adult",
+                    "quantidade": 1,
+                    "subtotal": 200.0,
+                    "lucro": 200.0
+                },
+                {
+                    "produto": "Bobojaco adult",
+                    "quantidade": 10,
+                    "subtotal": 2000.0,
+                    "lucro": 2000.0
+                }
+            ],
+            "total": 2200.0,
+            "pagamento": "Crédito 2x",
+            "pagamentos": [
+                {
+                    "tipo": "Crédito 2x",
+                    "valor": 0.0
+                }
+            ],
+            "data": "12/06/2026 12:00"
+        },
+        {
+            "id": 63,
+            "itens": [
+                {
+                    "produto": "Bobojaco adult",
+                    "quantidade": 1,
+                    "subtotal": 200.0,
+                    "lucro": 200.0
+                },
+                {
+                    "produto": "Short inf",
+                    "quantidade": 3,
+                    "subtotal": 180.0,
+                    "lucro": 105.0
+                },
+                {
+                    "produto": "Camisa inf",
+                    "quantidade": 2,
+                    "subtotal": 90.0,
+                    "lucro": 50.0
+                }
+            ],
+            "total": 470.0,
+            "pagamento": "Dinheiro",
+            "pagamentos": [
+                {
+                    "tipo": "Dinheiro",
+                    "valor": 0.0
+                }
+            ],
+            "data": "14/06/2026 16:12",
+            "troca": true,
+            "saldo_restante": 30.0,
+            "data_troca": "14/06/2026 16:17"
+        },
+        {
+            "id": 64,
+            "itens": [
+                {
+                    "produto": "Camisa adul",
+                    "quantidade": 1,
+                    "subtotal": 70.0,
+                    "lucro": 45.0
+                }
+            ],
+            "total": 70.0,
+            "pagamento": "Débito",
+            "pagamentos": [
+                {
+                    "tipo": "Débito",
+                    "valor": 0.0
+                }
+            ],
+            "data": "25/06/2026 14:55"
+        },
+        {
+            "id": 65,
+            "itens": [
+                {
+                    "produto": "Camisa adul",
+                    "quantidade": 2,
+                    "subtotal": 140.0,
+                    "lucro": 90.0
+                }
+            ],
+            "total": 140.0,
+            "pagamento": "Pagamento Misto",
+            "pagamentos": [
+                {
+                    "tipo": "Crédito 1x",
+                    "valor": 70.0
+                },
+                {
+                    "tipo": "Pix",
+                    "valor": 70.0
+                }
+            ],
+            "data": "25/06/2026 14:57"
+        },
+        {
+            "id": 66,
+            "itens": [
+                {
+                    "produto": "Camisa inf",
+                    "quantidade": 4,
+                    "subtotal": 180.0,
+                    "lucro": 100.0
+                }
+            ],
+            "total": 180.0,
+            "pagamento": "Pix",
+            "pagamentos": [
+                {
+                    "tipo": "Pix",
+                    "valor": 0.0
+                }
+            ],
+            "data": "25/06/2026 15:00"
         }
     ],
     "caixa": {
-        "aberto": false,
-        "valor_inicial": 0,
-        "data_abertura": "",
-        "vendas_periodo": 0
+        "aberto": true,
+        "valor_inicial": 400.0,
+        "data_abertura": "25/06/2026 14:55",
+        "vendas_periodo": 390.0
     },
     "historico_caixa": [
         {
@@ -1331,6 +1632,34 @@
             "valor_inicial": 500.0,
             "vendas": 729.0,
             "saldo_final": 1229.0
+        },
+        {
+            "data_abertura": "08/06/2026 21:56",
+            "data_fechamento": "08/06/2026 22:03",
+            "valor_inicial": 1000.0,
+            "vendas": 910.0,
+            "saldo_final": 1910.0
+        },
+        {
+            "data_abertura": "08/06/2026 22:08",
+            "data_fechamento": "12/06/2026 11:20",
+            "valor_inicial": 1.0,
+            "vendas": 2240.0,
+            "saldo_final": 2241.0
+        },
+        {
+            "data_abertura": "12/06/2026 11:21",
+            "data_fechamento": "14/06/2026 16:06",
+            "valor_inicial": 600.0,
+            "vendas": 3740.0,
+            "saldo_final": 4340.0
+        },
+        {
+            "data_abertura": "14/06/2026 16:07",
+            "data_fechamento": "25/06/2026 14:54",
+            "valor_inicial": 550.0,
+            "vendas": 470.0,
+            "saldo_final": 1020.0
         }
     ]
 }

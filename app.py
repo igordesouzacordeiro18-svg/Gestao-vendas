@@ -1,6 +1,7 @@
 import json
 from datetime import datetime
-from flask import Flask, render_template, request, redirect
+from flask import Flask, render_template, request, redirect, jsonify
+from collections import defaultdict
 
 app = Flask(__name__)
 
@@ -16,8 +17,27 @@ def dashboard():
 
     dados = carregar_dados()
 
-    total_vendas = len(dados["vendas"])
+    total_vendas = 0
 
+    if dados["caixa"]["aberto"]:
+
+        data_abertura = datetime.strptime(
+            dados["caixa"]["data_abertura"],
+            "%d/%m/%Y %H:%M"
+        )
+
+        for venda in dados["vendas"]:
+
+            data_venda = datetime.strptime(
+                venda["data"],
+                "%d/%m/%Y %H:%M"
+            )
+
+            if data_venda >= data_abertura:
+
+                total_vendas += 1
+
+    
     total_produtos = len(dados["produtos"])
 
     if dados["caixa"]["aberto"]:
@@ -203,7 +223,7 @@ def salvar_venda():
 
         for produto in dados["produtos"]:
 
-            if produto["nome"] == nome_produto:
+            if produto["nome"].strip() == nome_produto.strip():
 
                 produto_encontrado = produto
                 break
@@ -322,7 +342,7 @@ def salvar_produto():
 
     dados = carregar_dados()
 
-    nome = request.form["nome"]
+    nome = request.form["nome"].strip()
 
     preco = float(
         request.form["preco"]
@@ -592,6 +612,7 @@ def relatorio_financeiro():
 
             lucro += item.get("lucro", 0)
 
+    
     return render_template(
         "relatorio_financeiro.html",
         total=total,
@@ -617,6 +638,11 @@ def relatorio_graficos():
 
     dados = carregar_dados()
 
+    filtro = request.args.get(
+        "filtro",
+        "semana"
+    )
+
     pix = sum(
         venda["total"]
         for venda in dados["vendas"]
@@ -639,11 +665,223 @@ def relatorio_graficos():
         )
     )
 
+    vendas_por_periodo = defaultdict(float)
+
+    hoje = datetime.now()
+
+    for venda in dados["vendas"]:
+
+        data_venda = datetime.strptime(
+            venda["data"],
+            "%d/%m/%Y %H:%M"
+        )
+
+        if filtro == "semana":
+
+            if (
+                data_venda.isocalendar()[1]
+                ==
+                hoje.isocalendar()[1]
+            ):
+
+                chave = data_venda.strftime(
+                    "%d/%m"
+                )
+
+                vendas_por_periodo[chave] += (
+                    venda["total"]
+                )
+
+        elif filtro == "mes":
+
+            if (
+                data_venda.month == hoje.month
+                and
+                data_venda.year == hoje.year
+            ):
+
+                chave = data_venda.strftime(
+                    "%d"
+                )
+
+                vendas_por_periodo[chave] += (
+                    venda["total"]
+                )
+
+        elif filtro == "ano":
+
+            if data_venda.year == hoje.year:
+
+                meses = [
+                    "Jan", "Fev", "Mar", "Abr",
+                    "Mai", "Jun", "Jul", "Ago",
+                    "Set", "Out", "Nov", "Dez"
+                ]
+
+                chave = meses[
+                    data_venda.month - 1
+                ]
+
+                vendas_por_periodo[chave] += (
+                    venda["total"]
+                )
+
+    
+    ordem_meses = [
+        "Jan", "Fev", "Mar", "Abr",
+        "Mai", "Jun", "Jul", "Ago",
+        "Set", "Out", "Nov", "Dez"
+    ]
+
+    if filtro == "ano":
+
+        datas = [
+            mes
+            for mes in ordem_meses
+            if mes in vendas_por_periodo
+        ]
+
+        valores = [
+            vendas_por_periodo[mes]
+            for mes in datas
+        ]
+
+    else:
+
+        datas = sorted(
+            vendas_por_periodo.keys()
+        )
+
+        valores = [
+            vendas_por_periodo[data]
+            for data in datas
+        ]
+
+    dias_semana = {
+        "Seg": 0,
+        "Ter": 0,
+        "Qua": 0,
+        "Qui": 0,
+        "Sex": 0,
+        "Sáb": 0,
+        "Dom": 0
+    }
+
+    hoje = datetime.now()
+
+    semana_atual = hoje.isocalendar()[1]
+    ano_atual = hoje.year
+
+    for venda in dados["vendas"]:
+
+        data_venda = datetime.strptime(
+            venda["data"],
+            "%d/%m/%Y %H:%M"
+        )
+
+        if (
+            data_venda.isocalendar()[1]
+            != semana_atual
+            or
+            data_venda.year != ano_atual
+        ):
+            continue
+
+        dia = data_venda.weekday()
+
+        dias = [
+            "Seg",
+            "Ter",
+            "Qua",
+            "Qui",
+            "Sex",
+            "Sáb",
+            "Dom"
+        ]
+
+        dias_semana[
+            dias[dia]
+        ] += venda["total"]
+
     return render_template(
         "relatorio_graficos.html",
         pix=pix,
         dinheiro=dinheiro,
-        cartao=cartao
+        cartao=cartao,
+        datas=datas,
+        valores=valores,
+        filtro=filtro,
+        dias_semana=list(dias_semana.keys()),
+        valores_semana=list(dias_semana.values())
+    )
+
+
+@app.route("/relatorio-produtos")
+def relatorio_produtos():
+
+    dados = carregar_dados()
+
+    produtos_vendidos = {}
+    produtos_lucro = {}
+
+    for venda in dados["vendas"]:
+
+        for item in venda["itens"]:
+
+            nome = item["produto"]
+
+            quantidade = item["quantidade"]
+
+            lucro = item["lucro"]
+
+            produtos_vendidos[nome] = (
+                produtos_vendidos.get(nome, 0)
+                + quantidade
+            )
+
+            produtos_lucro[nome] = (
+                produtos_lucro.get(nome, 0)
+                + lucro
+            )
+
+    top_vendidos = sorted(
+        produtos_vendidos.items(),
+        key=lambda x: x[1],
+        reverse=True
+    )[:10]
+
+    top_lucro = sorted(
+        produtos_lucro.items(),
+        key=lambda x: x[1],
+        reverse=True
+    )[:10]
+
+    nomes_vendidos = [
+        item[0]
+        for item in top_vendidos
+    ]
+
+    quantidades_vendidas = [
+        item[1]
+        for item in top_vendidos
+    ]
+
+    nomes_lucro = [
+        item[0]
+        for item in top_lucro
+    ]
+
+    valores_lucro = [
+        item[1]
+        for item in top_lucro
+    ]
+
+    return render_template(
+        "relatorio_produtos.html",
+        nomes_vendidos=nomes_vendidos,
+        quantidades_vendidas=quantidades_vendidas,
+        nomes_lucro=nomes_lucro,
+        valores_lucro=valores_lucro
     )
 
 
@@ -821,6 +1059,72 @@ def confirmar_troca_item(id_venda, indice_item):
         diferenca=diferenca,
         saldo_restante=saldo_restante
     )
+
+@app.route("/nova-troca")
+def nova_troca():
+
+    dados = carregar_dados()
+
+    produtos_ordenados = sorted(
+        dados["produtos"],
+        key=lambda p: p["nome"].lower()
+    )
+
+    return render_template(
+        "nova_troca.html",
+        produtos=produtos_ordenados
+    )
+
+@app.route("/finalizar-troca", methods=["POST"])
+def finalizar_troca():
+
+    dados = carregar_dados()
+
+    data = request.get_json()
+
+    devolvidos = data.get("devolvidos", [])
+    novos = data.get("novosProdutos", [])
+    credito = data.get("credito", 0)
+    total_compra = data.get("totalCompra", 0)
+
+    produtos = dados["produtos"]
+
+    # 1. DEVOLVIDOS -> volta estoque
+    for item in devolvidos:
+        for produto in produtos:
+            if produto["id"] == item["id"]:
+                produto["estoque"] += item["quantidade"]
+
+    # 2. NOVOS PRODUTOS -> sai estoque
+    for item in novos:
+        for produto in produtos:
+            if produto["id"] == item["id"]:
+
+                # valida estoque
+                if produto["estoque"] < item["quantidade"]:
+                    return jsonify({
+                        "erro": f"Estoque insuficiente: {produto['nome']}"
+                    }), 400
+
+                produto["estoque"] -= item["quantidade"]
+
+    # 3. REGISTRO DA TROCA
+    if "trocas" not in dados:
+        dados["trocas"] = []
+
+    dados["trocas"].append({
+        "devolvidos": devolvidos,
+        "novos": novos,
+        "credito": credito,
+        "total_compra": total_compra
+    })
+
+    # 4. SALVAR
+    salvar_dados(dados)
+
+    return jsonify({
+        "mensagem": "Troca finalizada com sucesso!"
+    })
 
 @app.route("/lucro")
 def lucro():

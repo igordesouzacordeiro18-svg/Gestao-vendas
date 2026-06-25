@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+
+    <meta charset="UTF-8">
+
+    <title>Nova Troca</title>
+
+    <link rel="stylesheet"
+    href="{{ url_for('static', filename='style.css') }}">
+
+</head>
+
+<body>
+
+<div class="layout">
+
+    <div class="sidebar">
+
+        <h2>🛍️ Loja</h2>
+
+    </div>
+
+    <div class="main">
+
+        <h1>🔁 Nova Troca</h1>
+
+        <div class="card">
+
+            <h2>📥 Produto Devolvido</h2>
+
+            <select id="produtoDevolvido">
+
+                {% for produto in produtos %}
+
+                    <option
+                        value="{{ produto.id }}"
+                        data-preco="{{ produto.preco }}"
+                        data-nome="{{ produto.nome }}">
+
+                        {{ produto.nome }}
+                        - R$ {{ produto.preco }}
+
+                    </option>
+
+                {% endfor %}
+
+            </select>
+
+            <input
+                type="number"
+                id="quantidadeDevolvida"
+                class="input-quantidade"
+                value="1"
+                min="1">
+
+            <button onclick="adicionarDevolvido()">
+
+                ➕ Adicionar Devolução
+
+            </button>
+
+            <hr>
+
+            <h3>Produtos devolvidos</h3>
+
+            <div id="listaDevolvidos"></div>
+
+            <h3>
+
+                Crédito:
+                <span id="creditoTotal">
+
+                    R$ 0,00
+
+                </span>
+
+            </h3>
+
+        </div>
+
+        <div class="card">
+
+            <h2>🛒 Produtos da Nova Compra</h2>
+
+            <select id="produtoNovo">
+
+                {% for produto in produtos %}
+
+                    <option
+                        value="{{ produto.id }}"
+                        data-preco="{{ produto.preco }}"
+                        data-nome="{{ produto.nome }}">
+
+                        {{ produto.nome }}
+                        - R$ {{ produto.preco }}
+
+                    </option>
+
+                {% endfor %}
+
+            </select>
+
+            <input
+                type="number"
+                id="quantidadeNova"
+                class="input-quantidade"
+                value="1"
+                min="1">
+
+            <button onclick="adicionarNovo()">
+
+                ➕ Adicionar Produto
+
+            </button>
+
+            <hr>
+
+            <h3>Nova compra</h3>
+
+            <div id="listaNovos"></div>
+
+            <h3>
+
+                Total da compra:
+                <span id="totalCompra">
+
+                    R$ 0,00
+
+                </span>
+
+            </h3>
+
+        </div>
+
+
+        <div class="card">
+
+            <h2>📊 Resumo da Troca</h2>
+
+            <p id="creditoResumo">
+                Crédito: R$ 0,00
+            </p>
+
+            <p id="compraResumo">
+                Nova compra: R$ 0,00
+            </p>
+
+            <h2 id="resultadoTroca"
+                class="resultado-troca">
+
+                Aguardando produtos...
+
+            </h2>
+
+        </div>
+
+        <div class="card">
+
+            <h2>✅ Finalização</h2>
+
+            <div id="opcaoSobra" style="display:none;">
+
+                <label>
+
+                    <input
+                        type="checkbox"
+                        id="abrirMaoCredito">
+
+                    Cliente abre mão da diferença
+
+                </label>
+
+            </div>
+
+            <button
+                id="btnFinalizarTroca"
+                disabled>
+
+                ✅ Finalizar Troca
+
+            </button>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+<script>
+
+let devolvidos = [];
+
+let credito = 0;
+
+let novosProdutos = [];
+
+let totalCompra = 0;
+
+function adicionarDevolvido(){
+
+    const select =
+    document.getElementById(
+        "produtoDevolvido"
+    );
+
+    const option =
+    select.options[
+        select.selectedIndex
+    ];
+
+    const id =
+    parseInt(option.value);
+
+    const preco =
+    parseFloat(
+        option.dataset.preco
+    );
+
+    const nome =
+    option.dataset.nome;
+
+    const quantidade =
+    parseInt(
+        document.getElementById(
+            "quantidadeDevolvida"
+        ).value
+    );
+
+    devolvidos.push({
+
+        id,
+        nome,
+        preco,
+        quantidade
+
+    });
+
+    atualizarDevolvidos();
+
+}
+
+function atualizarDevolvidos(){
+
+    credito = 0;
+
+    const lista =
+    document.getElementById(
+        "listaDevolvidos"
+    );
+
+    lista.innerHTML = "";
+
+    devolvidos.forEach((item, index) => {
+
+        const subtotal =
+        item.preco * item.quantidade;
+
+        credito += subtotal;
+
+        lista.innerHTML += `
+
+            <div class="item-troca">
+
+                <span>
+
+                    ${item.nome}
+                    -
+                    ${item.quantidade}x
+                    =
+                    R$ ${subtotal.toFixed(2)}
+
+                </span>
+
+                <button
+                    onclick="removerDevolvido(${index})">
+
+                    ❌
+
+                </button>
+
+            </div>
+
+        `;
+
+    });
+
+    document.getElementById(
+        "creditoTotal"
+    ).innerText =
+
+        "R$ " +
+        credito.toFixed(2);
+
+    atualizarResumo();
+}
+
+
+function removerDevolvido(index){
+
+    devolvidos.splice(index,1);
+
+    atualizarDevolvidos();
+
+}
+
+function removerNovo(index){
+
+    novosProdutos.splice(index,1);
+
+    atualizarNovos();
+
+}
+
+
+function adicionarNovo(){
+
+    const select =
+    document.getElementById(
+        "produtoNovo"
+    );
+
+    const option =
+    select.options[
+        select.selectedIndex
+    ];
+
+    const id =
+    parseInt(option.value);
+
+    const preco =
+    parseFloat(
+        option.dataset.preco
+    );
+
+const nome =
+option.dataset.nome;
+
+    const quantidade =
+    parseInt(
+        document.getElementById(
+            "quantidadeNova"
+        ).value
+    );
+
+    novosProdutos.push({
+
+        id,
+        nome,
+        preco,
+        quantidade
+
+    });
+
+    atualizarNovos();
+
+}
+
+function atualizarNovos(){
+
+    totalCompra = 0;
+
+    const lista =
+    document.getElementById(
+        "listaNovos"
+    );
+
+    lista.innerHTML = "";
+
+    novosProdutos.forEach((item, index) => {
+
+        const subtotal =
+        item.preco * item.quantidade;
+
+        totalCompra += subtotal;
+
+        lista.innerHTML += `
+
+            <div class="item-troca">
+
+                <span>
+
+                    ${item.nome}
+                    -
+                    ${item.quantidade}x
+                    =
+                    R$ ${subtotal.toFixed(2)}
+
+                </span>
+
+                <button
+                    onclick="removerNovo(${index})">
+
+                    ❌
+
+                </button>
+
+            </div>
+
+        `;
+
+    });
+
+    document.getElementById(
+        "totalCompra"
+    ).innerText =
+
+        "R$ " +
+        totalCompra.toFixed(2);
+
+    atualizarResumo();
+
+}
+
+function atualizarResumo(){
+
+    document.getElementById(
+        "creditoResumo"
+    ).innerText =
+
+        "Crédito: R$ " +
+        credito.toFixed(2);
+
+    document.getElementById(
+        "compraResumo"
+    ).innerText =
+
+        "Nova compra: R$ " +
+        totalCompra.toFixed(2);
+
+    const diferenca =
+    credito - totalCompra;
+
+    const resultado =
+    document.getElementById(
+        "resultadoTroca"
+    );
+
+    const opcaoSobra =
+    document.getElementById(
+        "opcaoSobra"
+    );
+
+    const botao =
+    document.getElementById(
+        "btnFinalizarTroca"
+    );
+
+    if(diferenca > 0){
+
+        resultado.innerText =
+        "🟢 Sobram R$ " +
+        diferenca.toFixed(2);
+
+        opcaoSobra.style.display =
+        "block";
+
+        botao.disabled = true;
+
+    }
+
+    else if(diferenca < 0){
+
+        resultado.innerText =
+        "🔴 Faltam R$ " +
+        Math.abs(
+            diferenca
+        ).toFixed(2);
+
+        opcaoSobra.style.display =
+        "none";
+
+        botao.disabled = false;
+
+    }
+
+    else{
+
+        resultado.innerText =
+        "✅ Valores iguais";
+
+        opcaoSobra.style.display =
+        "none";
+
+        botao.disabled = false;
+
+    }
+
+}
+
+document
+.getElementById(
+    "abrirMaoCredito"
+)
+.addEventListener(
+    "change",
+    function(){
+
+        const diferenca =
+        credito - totalCompra;
+
+        const botao =
+        document.getElementById(
+            "btnFinalizarTroca"
+        );
+
+        if(
+            diferenca > 0
+            &&
+            this.checked
+        ){
+
+            botao.disabled = false;
+
+        }
+
+        else if(
+            diferenca > 0
+        ){
+
+            botao.disabled = true;
+
+        }
+
+    }
+);
+
+</script>
+</body>
+</html>
