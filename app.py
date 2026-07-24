@@ -367,13 +367,16 @@ def redefinir_senha_token(token):
         return redirect(url_for("esqueci_senha"))
 
     if request.method == "POST":
-        nova_senha = request.form.get("nova_senha")
-        confirmar_senha = request.form.get("confirmar_senha")
+        nova_senha = request.form.get("nova_senha", "").strip()
+        confirmar_senha = request.form.get("confirmar_senha", "").strip()
 
-        if nova_senha and confirmar_senha:
-            if nova_senha != confirmar_senha:
-                return render_template("redefinir_senha_token.html", token=token, erro="As senhas não coincidem.")
+        if not nova_senha or not confirmar_senha:
+            return render_template("redefinir_senha_token.html", token=token, erro="Preencha todos os campos.")
 
+        if nova_senha != confirmar_senha:
+            return render_template("redefinir_senha_token.html", token=token, erro="As senhas não coincidem.")
+
+        try:
             usuario = Usuario.query.filter_by(email=email).first()
             if usuario:
                 usuario.senha = generate_password_hash(nova_senha)
@@ -382,6 +385,13 @@ def redefinir_senha_token(token):
 
                 flash("✅ Sua senha foi alterada com sucesso! Faça login com a nova senha.")
                 return redirect(url_for("login"))
+            else:
+                flash("❌ Usuário não encontrado.")
+                return redirect(url_for("esqueci_senha"))
+        except Exception as e:
+            db.session.rollback()
+            print(f"❌ Erro ao atualizar senha no banco: {e}")
+            return render_template("redefinir_senha_token.html", token=token, erro="Erro ao salvar a nova senha no banco de dados.")
 
     return render_template("redefinir_senha_token.html", token=token)
 
