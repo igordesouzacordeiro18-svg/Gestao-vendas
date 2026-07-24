@@ -101,9 +101,29 @@ class Troca(db.Model):
     saldo_diferenca = db.Column(db.Float, nullable=False)
 
 
-# === CRIAÇÃO AUTOMÁTICA DAS TABELAS NO BANCO DE DADOS ===
+# === EMAIL DO ADMINISTRADOR PRINCIPAL ===
+EMAIL_ADMIN = "igordesouzacordeiro18@gmail.com"
+
+
+# === CRIAÇÃO AUTOMÁTICA DAS TABELAS E DO USUÁRIO ADMIN ===
 with app.app_context():
     db.create_all()
+    
+    # Verifica se o administrador principal já existe; se não, cria automaticamente
+    admin_existente = Usuario.query.filter_by(email=EMAIL_ADMIN).first()
+    if not admin_existente:
+        senha_padrao = generate_password_hash("123456")  # Crie a senha inicial
+        validade_vitalicia = datetime.now() + timedelta(days=36500)
+        
+        novo_admin = Usuario(
+            email=EMAIL_ADMIN,
+            senha=senha_padrao,
+            validade_plano=validade_vitalicia,
+            primeiro_acesso=False
+        )
+        db.session.add(novo_admin)
+        db.session.commit()
+        print("✅ Usuário Administrador principal criado com sucesso!")
 
 
 def obter_dados_do_cliente():
@@ -129,7 +149,6 @@ def obter_dados_do_cliente():
 # ROTAS EXCLUSIVAS DO ADMINISTRADOR (PROTEGIDAS)
 # =======================================================
 
-EMAIL_ADMIN = "igordesouzacordeiro18@gmail.com"
 
 def apenas_admin(f):
     @wraps(f)
