@@ -27,7 +27,7 @@ db = SQLAlchemy(app)
 # =======================================================
 # CONFIGURAÇÃO DE E-MAIL (RESEND API - NUVEM)
 # =======================================================
-resend.api_key = os.getenv("RESEND_API_KEY", "re_5SZZZRrc_6eudCGCoiXZp1zp2qquM477C")
+resend.api_key = os.getenv("RESEND_API_KEY", "re_BZVQ6EHn_5q2os2LAst7NzBNpcq82qadK")
 serializer = URLSafeTimedSerializer(app.secret_key)
 #--------------------------------------------------------
 
