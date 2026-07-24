@@ -307,15 +307,16 @@ def salvar_nova_senha():
 def esqueci_senha():
     if request.method == "POST":
         email_digitado = request.form.get("email", "").strip().lower()
+        print(f"🔍 BUSCANDO USUÁRIO PARA: {email_digitado}")
 
         try:
             usuario = Usuario.query.filter_by(email=email_digitado).first()
 
             if usuario:
+                print("✅ Usuário encontrado no banco! Gerando token...")
                 token = serializer.dumps(email_digitado, salt="recuperar-senha-salt")
                 link_redefinicao = url_for("redefinir_senha_token", token=token, _external=True)
 
-                # Disparo via Resend API
                 params = {
                     "from": "onboarding@resend.dev",
                     "to": [email_digitado],
@@ -327,12 +328,16 @@ def esqueci_senha():
                     """,
                 }
 
-                resend.Emails.send(params)
-                print(f"✅ E-mail de recuperação enviado via Resend para: {email_digitado}")
+                print("🚀 Enviando para a API do Resend...")
+                resposta = resend.Emails.send(params)
+                print(f"✅ RESEND RESPOSTA: {resposta}")
+
+            else:
+                print("⚠️ Usuário NÃO encontrado na tabela do banco de dados!")
 
         except Exception as e:
             db.session.rollback()
-            print(f"❌ ERRO NO ENVIO (RESEND): {e}")
+            print(f"❌ ERRO EXCEÇÃO RESEND: {e}")
 
         flash("Se o e-mail estiver cadastrado em nosso sistema, você receberá as instruções em instantes.")
         return redirect(url_for("login"))
