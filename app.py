@@ -27,10 +27,6 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 # Inicializa o banco de dados no seu app Flask
 db = SQLAlchemy(app)
 
-# === CRIAÇÃO AUTOMÁTICA DAS TABELAS NO BANCO DE DADOS ===
-with app.app_context():
-    db.create_all()
-
 
 # =======================================================
 # CONFIGURAÇÃO DE E-MAIL (SERVIDORES SMTP GMAIL)
@@ -103,6 +99,11 @@ class Troca(db.Model):
     credito = db.Column(db.Float, nullable=False)
     total_compra = db.Column(db.Float, nullable=False)
     saldo_diferenca = db.Column(db.Float, nullable=False)
+
+
+# === CRIAÇÃO AUTOMÁTICA DAS TABELAS NO BANCO DE DADOS ===
+with app.app_context():
+    db.create_all()
 
 
 def obter_dados_do_cliente():
