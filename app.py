@@ -320,17 +320,18 @@ def salvar_nova_senha():
 def esqueci_senha():
     if request.method == "POST":
         email_digitado = request.form.get("email", "").strip().lower()
-        usuario = Usuario.query.filter_by(email=email_digitado).first()
+        
+        try:
+            usuario = Usuario.query.filter_by(email=email_digitado).first()
 
-        if usuario:
-            token = serializer.dumps(email_digitado, salt="recuperar-senha-salt")
-            
-            # Utiliza a URL real da aplicação na nuvem (ou no ambiente em execução)
-            link_redefinicao = url_for("redefinir_senha_token", token=token, _external=True)
+            if usuario:
+                token = serializer.dumps(email_digitado, salt="recuperar-senha-salt")
+                
+                # Gera o link dinâmico completo apontando para o Render
+                link_redefinicao = url_for("redefinir_senha_token", token=token, _external=True)
 
-            # Criar a mensagem
-            msg = Message("🔒 Recuperação de Senha - Sistema", recipients=[email_digitado])
-            msg.body = f"""Olá!
+                msg = Message("🔒 Recuperação de Senha - Sistema", recipients=[email_digitado])
+                msg.body = f"""Olá!
 
 Recebemos uma solicitação para redefinir a senha da sua conta no sistema.
 
@@ -339,12 +340,15 @@ Para criar uma nova senha, clique no link abaixo (válido por 15 minutos):
 
 Se você não solicitou essa alteração, ignore este e-mail.
 """
-            try:
                 mail.send(msg)
-            except Exception as e:
-                print(f"❌ Erro ao enviar e-mail via Flask-Mail: {e}")
+                print(f"✅ E-mail de recuperação enviado para: {email_digitado}")
 
-        # Mensagem genérica por segurança
+        except Exception as e:
+            # Imprime o motivo real do erro nos Logs do Render
+            print(f"❌ ERRO NO ENVIO DE E-MAIL: {type(e).__name__} - {e}")
+            flash("Ocorreu uma falha ao tentar enviar o e-mail de recuperação. Verifique os servidores SMTP.")
+            return redirect(url_for("esqueci_senha"))
+
         flash("Se o e-mail estiver cadastrado em nosso sistema, você receberá as instruções de redefinição em instantes.")
         return redirect(url_for("login"))
 
