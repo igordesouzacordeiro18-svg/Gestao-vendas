@@ -29,17 +29,19 @@ db = SQLAlchemy(app)
 
 
 # =======================================================
-# CONFIGURAÇÃO DE E-MAIL (SERVIDORES SMTP GMAIL)
+# CONFIGURAÇÃO DE E-MAIL (COM TIMEOUT SEGURO)
 # =======================================================
 app.config['MAIL_SERVER'] = 'smtp.gmail.com'
-app.config['MAIL_PORT'] = 465
-app.config['MAIL_USE_TLS'] = False
-app.config['MAIL_USE_SSL'] = True
+app.config['MAIL_PORT'] = 587
+app.config['MAIL_USE_TLS'] = True
+app.config['MAIL_USE_SSL'] = False
 app.config['MAIL_USERNAME'] = os.getenv("MAIL_USERNAME", "igordesouzacordeiro18@gmail.com")
 app.config['MAIL_PASSWORD'] = os.getenv("MAIL_PASSWORD", "wazo vmkl jdkk rguf")
+app.config['MAIL_DEFAULT_SENDER'] = ('Suporte Sistema', "igordesouzacordeiro18@gmail.com")
 
-default_sender_email = os.getenv("MAIL_USERNAME", "igordesouzacordeiro18@gmail.com")
-app.config['MAIL_DEFAULT_SENDER'] = ('Suporte Sistema', default_sender_email)
+# Define um tempo máximo de 5 segundos para a conexão não travar a aplicação
+app.config['MAIL_CONNECT_TIMEOUT'] = 5
+app.config['MAIL_TIMEOUT'] = 5
 
 mail = Mail(app)
 serializer = URLSafeTimedSerializer(app.secret_key)
@@ -321,14 +323,12 @@ def salvar_nova_senha():
 def esqueci_senha():
     if request.method == "POST":
         email_digitado = request.form.get("email", "").strip().lower()
-        
+
         try:
             usuario = Usuario.query.filter_by(email=email_digitado).first()
 
             if usuario:
                 token = serializer.dumps(email_digitado, salt="recuperar-senha-salt")
-                
-                # Gera o link dinâmico completo apontando para o Render
                 link_redefinicao = url_for("redefinir_senha_token", token=token, _external=True)
 
                 msg = Message("🔒 Recuperação de Senha - Sistema", recipients=[email_digitado])
@@ -345,10 +345,10 @@ Se você não solicitou essa alteração, ignore este e-mail.
                 print(f"✅ E-mail de recuperação enviado para: {email_digitado}")
 
         except Exception as e:
-            # Imprime o motivo real do erro nos Logs do Render
+            db.session.rollback() # Limpa a sessão do banco para evitar erro de SSL/PostgreSQL
             print(f"❌ ERRO NO ENVIO DE E-MAIL: {type(e).__name__} - {e}")
-            flash("Ocorreu uma falha ao tentar enviar o e-mail de recuperação. Verifique os servidores SMTP.")
-            return redirect(url_for("esqueci_senha"))
+            flash("Não foi possível enviar o e-mail no momento. Tente novamente em alguns minutos.")
+            return redirect(url_for("login"))
 
         flash("Se o e-mail estiver cadastrado em nosso sistema, você receberá as instruções de redefinição em instantes.")
         return redirect(url_for("login"))
