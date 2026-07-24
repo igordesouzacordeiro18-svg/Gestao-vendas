@@ -27,6 +27,10 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 # Inicializa o banco de dados no seu app Flask
 db = SQLAlchemy(app)
 
+# === CRIAÇÃO AUTOMÁTICA DAS TABELAS NO BANCO DE DADOS ===
+with app.app_context():
+    db.create_all()
+
 
 # =======================================================
 # CONFIGURAÇÃO DE E-MAIL (SERVIDORES SMTP GMAIL)
