@@ -32,8 +32,9 @@ db = SQLAlchemy(app)
 # CONFIGURAÇÃO DE E-MAIL (SERVIDORES SMTP GMAIL)
 # =======================================================
 app.config['MAIL_SERVER'] = 'smtp.gmail.com'
-app.config['MAIL_PORT'] = 587
-app.config['MAIL_USE_TLS'] = True
+app.config['MAIL_PORT'] = 465
+app.config['MAIL_USE_TLS'] = False
+app.config['MAIL_USE_SSL'] = True
 app.config['MAIL_USERNAME'] = os.getenv("MAIL_USERNAME", "igordesouzacordeiro18@gmail.com")
 app.config['MAIL_PASSWORD'] = os.getenv("MAIL_PASSWORD", "wazo vmkl jdkk rguf")
 
