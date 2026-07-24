@@ -1,14 +1,15 @@
 import json
 import os
+import sib_api_v3_sdk
+from sib_api_v3_sdk.rest import ApiException
 from datetime import datetime, timedelta
 from collections import defaultdict
 from functools import wraps
-
 from flask import Flask, render_template, request, redirect, jsonify, url_for, flash, session
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 from itsdangerous import URLSafeTimedSerializer, SignatureExpired, BadTimeSignature
-import resend
+
 
 app = Flask(__name__)
 
@@ -24,10 +25,11 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
 
-# =======================================================
-# CONFIGURAÇÃO DE E-MAIL (RESEND API - NUVEM)
-# =======================================================
-resend.api_key = os.getenv("RESEND_API_KEY")
+# =========================================================
+# CONFIGURAÇÃO DE E-MAIL (BREVO API - NUVEM)
+# =========================================================
+configuration = sib_api_v3_sdk.Configuration()
+configuration.api_key['api-key'] = os.getenv("BREVO_API_KEY")
 serializer = URLSafeTimedSerializer(app.secret_key)
 #--------------------------------------------------------
 
@@ -307,37 +309,37 @@ def salvar_nova_senha():
 def esqueci_senha():
     if request.method == "POST":
         email_digitado = request.form.get("email", "").strip().lower()
-        print(f"🔍 BUSCANDO USUÁRIO PARA: {email_digitado}")
 
         try:
             usuario = Usuario.query.filter_by(email=email_digitado).first()
 
             if usuario:
-                print("✅ Usuário encontrado no banco! Gerando token...")
                 token = serializer.dumps(email_digitado, salt="recuperar-senha-salt")
                 link_redefinicao = url_for("redefinir_senha_token", token=token, _external=True)
 
-                params = {
-                    "from": "onboarding@resend.dev",
-                    "to": [email_digitado],
-                    "subject": "🔒 Recuperação de Senha - Sistema",
-                    "html": f"""
-                    <p>Olá!</p>
-                    <p>Recebemos uma solicitação para redefinir a senha da sua conta no sistema.</p>
-                    <p><a href="{link_redefinicao}">Clique aqui para redefinir sua senha</a> (Válido por 15 minutos).</p>
-                    """,
-                }
+                # Instancia o cliente da API do Brevo
+                api_instance = sib_api_v3_sdk.TransactionalEmailsApi(sib_api_v3_sdk.ApiClient(configuration))
+                
+                send_smtp_email = sib_api_v3_sdk.SendSmtpEmail(
+                    to=[{"email": email_digitado}],
+                    sender={"name": "Suporte Sistema", "email": "igordesouzacordeiro18@gmail.com"},
+                    subject="🔒 Recuperação de Senha",
+                    html_content=f"""
+                        <p>Olá!</p>
+                        <p>Recebemos uma solicitação para redefinir sua senha.</p>
+                        <p><a href="{link_redefinicao}">Clique aqui para redefinir sua senha</a> (Válido por 15 min)</p>
+                    """
+                )
 
-                print("🚀 Enviando para a API do Resend...")
-                resposta = resend.Emails.send(params)
-                print(f"✅ RESEND RESPOSTA: {resposta}")
+                api_response = api_instance.send_transac_email(send_smtp_email)
+                print(f"✅ E-mail enviado via Brevo: {api_response}")
 
-            else:
-                print("⚠️ Usuário NÃO encontrado na tabela do banco de dados!")
-
+        except ApiException as e:
+            db.session.rollback()
+            print(f"❌ ERRO BREVO API: {e}")
         except Exception as e:
             db.session.rollback()
-            print(f"❌ ERRO EXCEÇÃO RESEND: {e}")
+            print(f"❌ ERRO GERAL: {e}")
 
         flash("Se o e-mail estiver cadastrado em nosso sistema, você receberá as instruções em instantes.")
         return redirect(url_for("login"))
