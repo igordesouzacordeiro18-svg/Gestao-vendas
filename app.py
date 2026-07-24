@@ -29,7 +29,7 @@ db = SQLAlchemy(app)
 
 
 # =======================================================
-# CONFIGURAÇÃO DE E-MAIL (COM TIMEOUT SEGURO)
+# CONFIGURAÇÃO DE E-MAIL (SMTP GMAIL)
 # =======================================================
 app.config['MAIL_SERVER'] = 'smtp.gmail.com'
 app.config['MAIL_PORT'] = 587
@@ -38,10 +38,6 @@ app.config['MAIL_USE_SSL'] = False
 app.config['MAIL_USERNAME'] = os.getenv("MAIL_USERNAME", "igordesouzacordeiro18@gmail.com")
 app.config['MAIL_PASSWORD'] = os.getenv("MAIL_PASSWORD", "wazo vmkl jdkk rguf")
 app.config['MAIL_DEFAULT_SENDER'] = ('Suporte Sistema', "igordesouzacordeiro18@gmail.com")
-
-# Define um tempo máximo de 5 segundos para a conexão não travar a aplicação
-app.config['MAIL_CONNECT_TIMEOUT'] = 5
-app.config['MAIL_TIMEOUT'] = 5
 
 mail = Mail(app)
 serializer = URLSafeTimedSerializer(app.secret_key)
