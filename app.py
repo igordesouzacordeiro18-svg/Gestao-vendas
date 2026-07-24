@@ -1,45 +1,33 @@
 import json
 import os
 from datetime import datetime, timedelta
-from flask import Flask, render_template, request, redirect, jsonify, url_for, flash, session
 from collections import defaultdict
+from functools import wraps
+
+from flask import Flask, render_template, request, redirect, jsonify, url_for, flash, session
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
-from flask_mail import Mail, Message
 from itsdangerous import URLSafeTimedSerializer, SignatureExpired, BadTimeSignature
-from functools import wraps
+import resend
 
 app = Flask(__name__)
 
 # === CONFIGURAÇÕES DE SEGURANÇA E BANCO DE DADOS ===
-# Chave secreta puxada do ambiente ou valor padrão
 app.secret_key = os.getenv("SECRET_KEY", "uma_chave_criptografica_muito_segura_aqui")
 
-# Na nuvem usará a URL do PostgreSQL, localmente usará o SQLite
 db_uri = os.getenv("DATABASE_URL", "sqlite:///sistema.db")
-# Ajuste de compatibilidade caso o Render forneça a URL começando com "postgres://"
 if db_uri.startswith("postgres://"):
     db_uri = db_uri.replace("postgres://", "postgresql://", 1)
 
 app.config['SQLALCHEMY_DATABASE_URI'] = db_uri
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-# Inicializa o banco de dados no seu app Flask
 db = SQLAlchemy(app)
 
-
 # =======================================================
-# CONFIGURAÇÃO DE E-MAIL (SMTP GMAIL)
+# CONFIGURAÇÃO DE E-MAIL (RESEND API - NUVEM)
 # =======================================================
-app.config['MAIL_SERVER'] = 'smtp.gmail.com'
-app.config['MAIL_PORT'] = 587
-app.config['MAIL_USE_TLS'] = True
-app.config['MAIL_USE_SSL'] = False
-app.config['MAIL_USERNAME'] = os.getenv("MAIL_USERNAME", "igordesouzacordeiro18@gmail.com")
-app.config['MAIL_PASSWORD'] = os.getenv("MAIL_PASSWORD", "wazo vmkl jdkk rguf")
-app.config['MAIL_DEFAULT_SENDER'] = ('Suporte Sistema', "igordesouzacordeiro18@gmail.com")
-
-mail = Mail(app)
+resend.api_key = os.getenv("RESEND_API_KEY", "re_5SZZZRrc_6eudCGCoiXZp1zp2qquM477C")
 serializer = URLSafeTimedSerializer(app.secret_key)
 #--------------------------------------------------------
 
@@ -327,26 +315,26 @@ def esqueci_senha():
                 token = serializer.dumps(email_digitado, salt="recuperar-senha-salt")
                 link_redefinicao = url_for("redefinir_senha_token", token=token, _external=True)
 
-                msg = Message("🔒 Recuperação de Senha - Sistema", recipients=[email_digitado])
-                msg.body = f"""Olá!
+                # Disparo via Resend API
+                params = {
+                    "from": "onboarding@resend.dev",
+                    "to": [email_digitado],
+                    "subject": "🔒 Recuperação de Senha - Sistema",
+                    "html": f"""
+                    <p>Olá!</p>
+                    <p>Recebemos uma solicitação para redefinir a senha da sua conta no sistema.</p>
+                    <p><a href="{link_redefinicao}">Clique aqui para redefinir sua senha</a> (Válido por 15 minutos).</p>
+                    """,
+                }
 
-Recebemos uma solicitação para redefinir a senha da sua conta no sistema.
-
-Para criar uma nova senha, clique no link abaixo (válido por 15 minutos):
-{link_redefinicao}
-
-Se você não solicitou essa alteração, ignore este e-mail.
-"""
-                mail.send(msg)
-                print(f"✅ E-mail de recuperação enviado para: {email_digitado}")
+                resend.Emails.send(params)
+                print(f"✅ E-mail de recuperação enviado via Resend para: {email_digitado}")
 
         except Exception as e:
-            db.session.rollback() # Limpa a sessão do banco para evitar erro de SSL/PostgreSQL
-            print(f"❌ ERRO NO ENVIO DE E-MAIL: {type(e).__name__} - {e}")
-            flash("Não foi possível enviar o e-mail no momento. Tente novamente em alguns minutos.")
-            return redirect(url_for("login"))
+            db.session.rollback()
+            print(f"❌ ERRO NO ENVIO (RESEND): {e}")
 
-        flash("Se o e-mail estiver cadastrado em nosso sistema, você receberá as instruções de redefinição em instantes.")
+        flash("Se o e-mail estiver cadastrado em nosso sistema, você receberá as instruções em instantes.")
         return redirect(url_for("login"))
 
     return render_template("esqueci_senha.html")
