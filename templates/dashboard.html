@@ -12,90 +12,59 @@
     <link rel="stylesheet"
     href="{{ url_for('static', filename='style.css') }}">
 
+    <style>
+        /* Estilo para abas desabilitadas para funcionários */
+        .disabled-link {
+            color: #8898aa !important;
+            opacity: 0.5;
+            cursor: not-allowed !important;
+            pointer-events: none;
+            user-select: none;
+        }
+        
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed !important;
+        }
+    </style>
+
 </head>
 
 <body>
 
     <div class="layout">
 
-        <div class="sidebar">
-
-            <h2>🛍️ Loja</h2>
-
-            <ul>
-
-                <li>
-                    <a href="/dashboard">
-                        📊 Início
-                    </a>
-                </li>
-
-                <li>
-                    <a href="/produtos">
-                        📦 Produtos
-                    </a>
-                </li>
-
-                <li>
-                    <a href="/nova-venda">
-                        💰 Nova venda
-                    </a>
-                </li>
-
-                 <li>
-                    <a href="/nova-troca">
-                        🔁 Troca
-                    </a>
-                </li>
-
-                <li>
-                    <a href="/historico">
-                        🧾 Histórico
-                    </a>
-                </li>
-
-                <li>
-                    <a href="/caixa">
-                        💵 Caixa
-                    </a>
-                </li>
-                
-
-                <li>
-                    <a href="/lucro">
-                        📈 Lucro
-                    </a>
-                </li>
-
-
-                <li>
-                    <a href="/relatorios">
-                        📊 Relatórios
-                    </a>
-                </li>
-
-                <li>
-                    <a href="/estoque">
-                        📦 Estoque
-                    </a>
-                </li>
-
-                <li>
-                    <a href="/gestao">
-                        ⚙️ Gestão
-                    </a>
-                </li>
-
-
-            </ul>
-
-        </div>
+        {% include 'sidebar.html' %}
 
         <div class="main">
 
-            <h1>
-                📊 Painel de Vendas
-            </h1>
+            <!-- CABEÇALHO COM MODO DE ACESSO -->
+            <div class="header-painel" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px;">
+                
+                <h1 style="margin: 0; display: flex; align-items: center; gap: 10px;">
+                    📊 Painel de Vendas
+                </h1>
+
+                <!-- CONTROLE DE ALTERNÂNCIA DE PERFIL -->
+                <div style="display: flex; align-items: center; gap: 12px; background: #ffffff; padding: 8px 16px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); border: 1px solid #e2e8f0;">
+                    {% if session.get('cargo') == 'admin' %}
+                        <span style="font-size: 13px; color: #16a34a; font-weight: 600; display: flex; align-items: center; gap: 5px;">
+                            🟢 Modo Gestão
+                        </span>
+                        <button onclick="bloquearModo()" style="background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 500; transition: 0.2s;">
+                            🔒 Concluir Acesso
+                        </button>
+                    {% else %}
+                        <span style="font-size: 13px; color: #64748b; font-weight: 500; display: flex; align-items: center; gap: 5px;">
+                            ⚪ Modo Operacional
+                        </span>
+                        <button onclick="abrirModalGerente()" style="background: #2563eb; color: white; border: none; padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 500; box-shadow: 0 2px 4px rgba(37,99,235,0.2);">
+                            🔑 Acesso Gestão
+                        </button>
+                    {% endif %}
+                </div>
+
+            </div>
 
             <div class="cards">
 
@@ -147,13 +116,17 @@
 
                 </a>
 
-                <a href="/produtos">
-
-                    <button>
-                        📦 Cadastrar Produto
+                {% if session.get('cargo') == 'admin' %}
+                    <a href="/produtos">
+                        <button>
+                            📦 Cadastrar Produto
+                        </button>
+                    </a>
+                {% else %}
+                    <button disabled title="Apenas Gerentes">
+                        📦 Cadastrar Produto 🔒
                     </button>
-
-                </a>
+                {% endif %}
 
             </div>
 
@@ -206,6 +179,55 @@
         </div>
 
     </div>
+
+<!-- MODAL HUMANIZADO DE CONFIRMAÇÃO DE SENHA -->
+<dialog id="modalGerente" style="border: none; border-radius: 12px; padding: 24px; box-shadow: 0 10px 25px rgba(0,0,0,0.15); max-width: 320px; width: 100%;">
+    <h3 style="margin-top: 0; font-size: 18px; color: #1e293b;">🔑 Liberação de Gestão</h3>
+    <p style="font-size: 13px; color: #64748b; line-height: 1.4;">Digite a senha do administrador para liberar o acesso avançado:</p>
+    
+    <input type="password" id="senhaGerente" placeholder="Digite sua senha..." style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; margin-bottom: 16px; box-sizing: border-box; font-size: 14px; outline: none;">
+    
+    <div style="display: flex; gap: 8px; justify-content: flex-end;">
+        <button onclick="document.getElementById('modalGerente').close()" style="background: #f1f5f9; color: #64748b; border: none; padding: 8px 14px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 500;">Cancelar</button>
+        <button onclick="confirmarGerente()" style="background: #2563eb; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 500;">Desbloquear</button>
+    </div>
+</dialog>
+
+<script>
+function abrirModalGerente() {
+    document.getElementById('modalGerente').showModal();
+}
+
+function confirmarGerente() {
+    const senha = document.getElementById('senhaGerente').value;
+    
+    if(!senha) {
+        alert("Por favor, digite sua senha.");
+        return;
+    }
+
+    fetch('/alternar-modo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ senha: senha })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if(data.sucesso) {
+            window.location.reload();
+        } else {
+            alert(data.mensagem);
+        }
+    });
+}
+
+function bloquearModo() {
+    fetch('/bloquear-modo', { method: 'POST' })
+    .then(() => window.location.reload());
+}
+</script>
+
+<script src="{{ url_for('static', filename='sidebar.js') }}"></script>
 
 </body>
 </html>

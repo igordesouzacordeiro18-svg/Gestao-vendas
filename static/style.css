@@ -40,13 +40,17 @@ body{
     top: 0;
     left: 0;
     height: 100vh;
-    overflow-y: auto;
+    overflow-y: auto; /* Mantém o scroll interno ativo para o sidebar.js */
     z-index: 1000;
 }
 
 .sidebar h2{
     margin-bottom: 40px;
     font-size: 38px;
+    color: #ffffff; /* Garante o branco puro e nítido na palavra Loja */
+    font-weight: 700; /* Deixa o título com mais presença */
+    letter-spacing: 0.5px; /* Alinhamento e espaçamento profissional */
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2); /* Sutil profundidade no texto */
 }
 
 .sidebar ul{
@@ -1282,4 +1286,47 @@ select{
 
     background:#dc2626;
 
+}
+
+/* Estilo da Notificação Toast */
+.toast {
+    position: fixed;
+    bottom: 30px;
+    right: 30px;
+    background-color: #2e7d32; /* Verde escuro profissional */
+    color: white;
+    padding: 16px 28px;
+    border-radius: 8px;
+    font-weight: bold;
+    box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.2);
+    z-index: 1000;
+    
+    /* Começa invisível e jogado para baixo */
+    opacity: 0;
+    transform: translateY(20px);
+    transition: all 0.4s ease;
+    pointer-events: none;
+}
+
+/* Classe que o JavaScript vai injetar para mostrar o Toast */
+.toast.mostrar {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* Estilo visual para links e botões bloqueados */
+.disabled-link {
+    color: #8898aa !important;       /* Deixa o texto cinza */
+    opacity: 0.5 !important;          /* Deixa opaco/apagado */
+    cursor: not-allowed !important;   /* Cursor de proibido */
+    pointer-events: none;            /* Trava o clique */
+    user-select: none;               /* Impede de selecionar texto */
+    text-decoration: none !important;
+}
+
+button:disabled {
+    opacity: 0.5 !important;
+    cursor: not-allowed !important;
+    background-color: #a0aec0 !important; /* Fundo cinza para botões */
+    border-color: #a0aec0 !important;
 }

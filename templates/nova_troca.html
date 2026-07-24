@@ -1,531 +1,349 @@
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
-
     <meta charset="UTF-8">
-
     <title>Nova Troca</title>
-
-    <link rel="stylesheet"
-    href="{{ url_for('static', filename='style.css') }}">
-
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
-
 <body>
 
 <div class="layout">
 
-    <div class="sidebar">
-
-        <h2>🛍️ Loja</h2>
-
-    </div>
+    {% include 'sidebar.html' %}
 
     <div class="main">
 
         <h1>🔁 Nova Troca</h1>
 
         <div class="card">
-
             <h2>📥 Produto Devolvido</h2>
-
             <select id="produtoDevolvido">
-
                 {% for produto in produtos %}
-
-                    <option
-                        value="{{ produto.id }}"
-                        data-preco="{{ produto.preco }}"
-                        data-nome="{{ produto.nome }}">
-
-                        {{ produto.nome }}
-                        - R$ {{ produto.preco }}
-
+                    <option value="{{ produto.id }}" data-preco="{{ produto.preco }}" data-nome="{{ produto.nome }}">
+                        {{ produto.nome }} - R$ {{ produto.preco }}
                     </option>
-
                 {% endfor %}
-
             </select>
 
-            <input
-                type="number"
-                id="quantidadeDevolvida"
-                class="input-quantidade"
-                value="1"
-                min="1">
-
-            <button onclick="adicionarDevolvido()">
-
-                ➕ Adicionar Devolução
-
-            </button>
+            <input type="number" id="quantidadeDevolvida" class="input-quantidade" value="1" min="1">
+            <button onclick="adicionarDevolvido()">➕ Adicionar Devolução</button>
 
             <hr>
-
             <h3>Produtos devolvidos</h3>
-
             <div id="listaDevolvidos"></div>
 
             <h3>
-
-                Crédito:
-                <span id="creditoTotal">
-
-                    R$ 0,00
-
-                </span>
-
+                Crédito: <span id="creditoTotal">R$ 0,00</span>
             </h3>
-
         </div>
 
         <div class="card">
-
             <h2>🛒 Produtos da Nova Compra</h2>
-
             <select id="produtoNovo">
-
                 {% for produto in produtos %}
-
-                    <option
-                        value="{{ produto.id }}"
-                        data-preco="{{ produto.preco }}"
-                        data-nome="{{ produto.nome }}">
-
-                        {{ produto.nome }}
-                        - R$ {{ produto.preco }}
-
+                    <option value="{{ produto.id }}" data-preco="{{ produto.preco }}" data-nome="{{ produto.nome }}">
+                        {{ produto.nome }} - R$ {{ produto.preco }}
                     </option>
-
                 {% endfor %}
-
             </select>
 
-            <input
-                type="number"
-                id="quantidadeNova"
-                class="input-quantidade"
-                value="1"
-                min="1">
-
-            <button onclick="adicionarNovo()">
-
-                ➕ Adicionar Produto
-
-            </button>
+            <input type="number" id="quantidadeNova" class="input-quantidade" value="1" min="1">
+            <button onclick="adicionarNovo()">➕ Adicionar Produto</button>
 
             <hr>
-
             <h3>Nova compra</h3>
-
             <div id="listaNovos"></div>
 
             <h3>
-
-                Total da compra:
-                <span id="totalCompra">
-
-                    R$ 0,00
-
-                </span>
-
+                Total da compra: <span id="totalCompra">R$ 0,00</span>
             </h3>
-
         </div>
 
-
         <div class="card">
-
             <h2>📊 Resumo da Troca</h2>
-
-            <p id="creditoResumo">
-                Crédito: R$ 0,00
-            </p>
-
-            <p id="compraResumo">
-                Nova compra: R$ 0,00
-            </p>
-
-            <h2 id="resultadoTroca"
-                class="resultado-troca">
-
-                Aguardando produtos...
-
-            </h2>
-
+            <p id="creditoResumo">Crédito: R$ 0,00</p>
+            <p id="compraResumo">Nova compra: R$ 0,00</p>
+            <h2 id="resultadoTroca" class="resultado-troca">Aguardando produtos...</h2>
         </div>
 
         <div class="card">
-
             <h2>✅ Finalização</h2>
-
-            <div id="opcaoSobra" style="display:none;">
-
-                <label>
-
-                    <input
-                        type="checkbox"
-                        id="abrirMaoCredito">
-
-                    Cliente abre mão da diferença
-
+            
+            <div id="opcaoSobra" style="display:none; margin-bottom: 15px;">
+                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                    <input type="checkbox" id="abrirMaoCredito">
+                    <strong>Cliente abre mão da diferença</strong>
                 </label>
-
             </div>
 
-            <button
-                id="btnFinalizarTroca"
-                disabled>
+            <div id="campoPagamentoRestante" style="display:none; margin-bottom: 15px;">
+                <label style="display:block; margin-bottom: 5px; font-weight: bold;">
+                    Forma de pagamento da diferença:
+                </label>
+                <select id="formaPagamento" onchange="monitorarParcelas()" style="width: 100%; padding: 8px; border-radius: 5px; margin-bottom: 10px;">
+                    <option value="">Selecione...</option>
+                    <option value="Dinheiro">💵 Dinheiro</option>
+                    <option value="Pix">📱 Pix</option>
+                    <option value="Cartão de Crédito">💳 Cartão de Crédito</option>
+                    <option value="Cartão de Débito">💳 Cartão de Débito</option>
+                </select>
 
+                <div id="divParcelas" style="display: none; margin-top: 10px;">
+                    <label style="display:block; margin-bottom: 5px; font-weight: bold;">Parcelamento:</label>
+                    <select id="parcelas" style="width: 100%; padding: 8px; border-radius: 5px;">
+                        <option value="1">1x (À vista)</option>
+                        <option value="2">2x sem juros</option>
+                        <option value="3">3x sem juros</option>
+                        <option value="4">4x sem juros</option>
+                        <option value="5">5x sem juros</option>
+                        <option value="6">6x sem juros</option>
+                    </select>
+                </div>
+            </div>
+
+            <button id="btnFinalizarTroca" onclick="enviarTroca()" disabled style="width: 100%;">
                 ✅ Finalizar Troca
-
             </button>
-
         </div>
 
     </div>
 
 </div>
 
-
 <script>
-
+// 1. Variáveis Globais de Controle
 let devolvidos = [];
-
 let credito = 0;
-
 let novosProdutos = [];
-
 let totalCompra = 0;
 
+// 2. Funções para Gerenciar Itens Devolvidos
 function adicionarDevolvido(){
-
-    const select =
-    document.getElementById(
-        "produtoDevolvido"
-    );
-
-    const option =
-    select.options[
-        select.selectedIndex
-    ];
-
-    const id =
-    parseInt(option.value);
-
-    const preco =
-    parseFloat(
-        option.dataset.preco
-    );
-
-    const nome =
-    option.dataset.nome;
-
-    const quantidade =
-    parseInt(
-        document.getElementById(
-            "quantidadeDevolvida"
-        ).value
-    );
+    const select = document.getElementById("produtoDevolvido");
+    const option = select.options[select.selectedIndex];
+    const id = parseInt(option.value);
+    const preco = parseFloat(option.dataset.preco);
+    const nome = option.dataset.nome;
+    const quantidade = parseInt(document.getElementById("quantidadeDevolvida").value);
 
     devolvidos.push({
-
         id,
         nome,
         preco,
         quantidade
-
     });
 
     atualizarDevolvidos();
-
 }
 
 function atualizarDevolvidos(){
-
     credito = 0;
-
-    const lista =
-    document.getElementById(
-        "listaDevolvidos"
-    );
-
+    const lista = document.getElementById("listaDevolvidos");
     lista.innerHTML = "";
 
     devolvidos.forEach((item, index) => {
-
-        const subtotal =
-        item.preco * item.quantidade;
-
+        const subtotal = item.preco * item.quantidade;
         credito += subtotal;
 
         lista.innerHTML += `
-
             <div class="item-troca">
-
                 <span>
-
-                    ${item.nome}
-                    -
-                    ${item.quantidade}x
-                    =
-                    R$ ${subtotal.toFixed(2)}
-
+                    ${item.nome} - ${item.quantidade}x = R$ ${subtotal.toFixed(2)}
                 </span>
-
-                <button
-                    onclick="removerDevolvido(${index})">
-
-                    ❌
-
-                </button>
-
+                <button onclick="removerDevolvido(${index})">❌</button>
             </div>
-
         `;
-
     });
 
-    document.getElementById(
-        "creditoTotal"
-    ).innerText =
-
-        "R$ " +
-        credito.toFixed(2);
-
+    document.getElementById("creditoTotal").innerText = "R$ " + credito.toFixed(2);
     atualizarResumo();
 }
 
-
 function removerDevolvido(index){
-
-    devolvidos.splice(index,1);
-
+    devolvidos.splice(index, 1);
     atualizarDevolvidos();
-
 }
 
-function removerNovo(index){
-
-    novosProdutos.splice(index,1);
-
-    atualizarNovos();
-
-}
-
-
+// 3. Funções para Gerenciar Novos Produtos Selecionados
 function adicionarNovo(){
-
-    const select =
-    document.getElementById(
-        "produtoNovo"
-    );
-
-    const option =
-    select.options[
-        select.selectedIndex
-    ];
-
-    const id =
-    parseInt(option.value);
-
-    const preco =
-    parseFloat(
-        option.dataset.preco
-    );
-
-const nome =
-option.dataset.nome;
-
-    const quantidade =
-    parseInt(
-        document.getElementById(
-            "quantidadeNova"
-        ).value
-    );
+    const select = document.getElementById("produtoNovo");
+    const option = select.options[select.selectedIndex];
+    const id = parseInt(option.value);
+    const preco = parseFloat(option.dataset.preco);
+    const nome = option.dataset.nome;
+    const quantidade = parseInt(document.getElementById("quantidadeNova").value);
 
     novosProdutos.push({
-
         id,
         nome,
         preco,
         quantidade
-
     });
 
     atualizarNovos();
-
 }
 
 function atualizarNovos(){
-
     totalCompra = 0;
-
-    const lista =
-    document.getElementById(
-        "listaNovos"
-    );
-
+    const lista = document.getElementById("listaNovos");
     lista.innerHTML = "";
 
     novosProdutos.forEach((item, index) => {
-
-        const subtotal =
-        item.preco * item.quantidade;
-
+        const subtotal = item.preco * item.quantidade;
         totalCompra += subtotal;
 
         lista.innerHTML += `
-
             <div class="item-troca">
-
                 <span>
-
-                    ${item.nome}
-                    -
-                    ${item.quantidade}x
-                    =
-                    R$ ${subtotal.toFixed(2)}
-
+                    ${item.nome} - ${item.quantidade}x = R$ ${subtotal.toFixed(2)}
                 </span>
-
-                <button
-                    onclick="removerNovo(${index})">
-
-                    ❌
-
-                </button>
-
+                <button onclick="removerNovo(${index})">❌</button>
             </div>
-
         `;
-
     });
 
-    document.getElementById(
-        "totalCompra"
-    ).innerText =
-
-        "R$ " +
-        totalCompra.toFixed(2);
-
+    document.getElementById("totalCompra").innerText = "R$ " + totalCompra.toFixed(2);
     atualizarResumo();
-
 }
 
+function removerNovo(index){
+    novosProdutos.splice(index, 1);
+    atualizarNovos();
+}
+
+// 4. Lógica de Negócio e Validação de Telas (Interface)
 function atualizarResumo(){
+    document.getElementById("creditoResumo").innerText = "Crédito: R$ " + credito.toFixed(2);
+    document.getElementById("compraResumo").innerText = "Nova compra: R$ " + totalCompra.toFixed(2);
 
-    document.getElementById(
-        "creditoResumo"
-    ).innerText =
+    const diferenca = credito - totalCompra;
+    const resultado = document.getElementById("resultadoTroca");
+    const campoPagamento = document.getElementById("campoPagamentoRestante");
+    const opcaoSobra = document.getElementById("opcaoSobra");
+    const botao = document.getElementById("btnFinalizarTroca");
 
-        "Crédito: R$ " +
-        credito.toFixed(2);
-
-    document.getElementById(
-        "compraResumo"
-    ).innerText =
-
-        "Nova compra: R$ " +
-        totalCompra.toFixed(2);
-
-    const diferenca =
-    credito - totalCompra;
-
-    const resultado =
-    document.getElementById(
-        "resultadoTroca"
-    );
-
-    const opcaoSobra =
-    document.getElementById(
-        "opcaoSobra"
-    );
-
-    const botao =
-    document.getElementById(
-        "btnFinalizarTroca"
-    );
-
-    if(diferenca > 0){
-
-        resultado.innerText =
-        "🟢 Sobram R$ " +
-        diferenca.toFixed(2);
-
-        opcaoSobra.style.display =
-        "block";
-
+    // Se as listas estiverem vazias, bloqueia a tela
+    if (devolvidos.length === 0 || novosProdutos.length === 0) {
+        resultado.innerText = "Aguardando produtos...";
+        if(campoPagamento) campoPagamento.style.display = "none";
+        if(opcaoSobra) opcaoSobra.style.display = "none";
         botao.disabled = true;
-
+        return;
     }
 
-    else if(diferenca < 0){
-
-        resultado.innerText =
-        "🔴 Faltam R$ " +
-        Math.abs(
-            diferenca
-        ).toFixed(2);
-
-        opcaoSobra.style.display =
-        "none";
-
+    if (diferenca > 0) {
+        // SOBRAM R$: Libera o botão APENAS se o checkbox "Abrir mão" estiver ativo
+        resultado.innerText = "🟢 Sobram R$ " + diferenca.toFixed(2);
+        if(opcaoSobra) opcaoSobra.style.display = "block"; 
+        if(campoPagamento) campoPagamento.style.display = "none";
+        
+        const checkbox = document.getElementById("abrirMaoCredito");
+        botao.disabled = checkbox ? !checkbox.checked : true;
+    }
+    else if (diferenca < 0) {
+        // FALTAM R$: Cliente precisa cobrir a diferença. Abre os métodos de pagamento.
+        resultado.innerText = "🔴 Faltam R$ " + Math.abs(diferenca).toFixed(2);
+        if(opcaoSobra) {
+            opcaoSobra.style.display = "none";
+            const checkbox = document.getElementById("abrirMaoCredito");
+            if(checkbox) checkbox.checked = false; 
+        }
+        if(campoPagamento) campoPagamento.style.display = "block"; 
         botao.disabled = false;
-
     }
-
-    else{
-
-        resultado.innerText =
-        "✅ Valores iguais";
-
-        opcaoSobra.style.display =
-        "none";
-
+    else {
+        // VALORES IGUAIS: Elas por elas, botão liberado
+        resultado.innerText = "✅ Valores iguais";
+        if(opcaoSobra) opcaoSobra.style.display = "none";
+        if(campoPagamento) campoPagamento.style.display = "none";
         botao.disabled = false;
-
     }
-
 }
 
-document
-.getElementById(
-    "abrirMaoCredito"
-)
-.addEventListener(
-    "change",
-    function(){
-
-        const diferenca =
-        credito - totalCompra;
-
-        const botao =
-        document.getElementById(
-            "btnFinalizarTroca"
-        );
-
-        if(
-            diferenca > 0
-            &&
-            this.checked
-        ){
-
-            botao.disabled = false;
-
-        }
-
-        else if(
-            diferenca > 0
-        ){
-
-            botao.disabled = true;
-
-        }
-
+// Ouvinte para reavaliar o botão assim que marcar o checkbox de "abrir mão"
+document.addEventListener("DOMContentLoaded", function() {
+    const checkboxAbrirMao = document.getElementById("abrirMaoCredito");
+    if (checkboxAbrirMao) {
+        checkboxAbrirMao.addEventListener("change", function() {
+            const diferenca = credito - totalCompra;
+            const botao = document.getElementById("btnFinalizarTroca");
+            if (diferenca > 0) {
+                botao.disabled = !this.checked;
+            }
+        });
     }
-);
+});
 
+function monitorarParcelas() {
+    const forma = document.getElementById("formaPagamento").value;
+    const divParcelas = document.getElementById("divParcelas");
+    
+    if (forma === "Cartão de Crédito") {
+        divParcelas.style.display = "block";
+    } else {
+        divParcelas.style.display = "none";
+        document.getElementById("parcelas").value = "1"; // reseta
+    }
+}
+
+function enviarTroca() {
+    const diferenca = credito - totalCompra;
+    const checkbox = document.getElementById("abrirMaoCredito");
+    const abrirMaoCredito = checkbox ? checkbox.checked : false;
+    const formaPagamentoSelect = document.getElementById("formaPagamento");
+    let formaPagamento = "Troca Sem Diferença";
+    let qtdParcelas = 1;
+
+    if (diferenca < 0) {
+        if (formaPagamentoSelect) {
+            formaPagamento = formaPagamentoSelect.value;
+            if (!formaPagamento) {
+                alert("❌ Por favor, selecione a forma de pagamento para o valor restante!");
+                formaPagamentoSelect.focus();
+                return;
+            }
+            if (formaPagamento === "Cartão de Crédito") {
+                qtdParcelas = parseInt(document.getElementById("parcelas").value || 1);
+            }
+        }
+    }
+
+    const dadosTroca = {
+        devolvidos: devolvidos,
+        novosProdutos: novosProdutos,
+        credito: credito,
+        totalCompra: totalCompra,
+        abrirMaoCredito: abrirMaoCredito,
+        formaPagamento: formaPagamento,
+        parcelas: qtdParcelas
+    };
+
+    document.getElementById("btnFinalizarTroca").disabled = true;
+
+    fetch("/finalizar-troca", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify(dadosTroca)
+    })
+    .then(response => response.json().then(data => ({ status: response.status, body: data })))
+    .then(res => {
+        if (res.status === 200) {
+            alert(res.body.mensagem);
+            window.location.href = "/dashboard";
+        } else {
+            alert(res.body.erro || "Ocorreu um erro ao finalizar a troca.");
+            document.getElementById("btnFinalizarTroca").disabled = false;
+        }
+    })
+    .catch(error => {
+        console.error("Erro:", error);
+        alert("Erro de comunicação com o servidor.");
+        document.getElementById("btnFinalizarTroca").disabled = false;
+    });
+}
 </script>
+<script src="{{ url_for('static', filename='sidebar.js') }}"></script>
 </body>
 </html>

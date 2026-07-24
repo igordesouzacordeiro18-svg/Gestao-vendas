@@ -1,171 +1,560 @@
 import json
-from datetime import datetime
-from flask import Flask, render_template, request, redirect, jsonify
+import os
+from datetime import datetime, timedelta
+from flask import Flask, render_template, request, redirect, jsonify, url_for, flash, session
 from collections import defaultdict
+from flask_sqlalchemy import SQLAlchemy
+from werkzeug.security import generate_password_hash, check_password_hash
+from flask_mail import Mail, Message
+from itsdangerous import URLSafeTimedSerializer, SignatureExpired, BadTimeSignature
+from functools import wraps
 
 app = Flask(__name__)
 
+# === CONFIGURAÇÕES DE SEGURANÇA E BANCO DE DADOS ===
+# Chave secreta puxada do ambiente ou valor padrão
+app.secret_key = os.getenv("SECRET_KEY", "uma_chave_criptografica_muito_segura_aqui")
 
-@app.route("/")
+# Na nuvem usará a URL do PostgreSQL, localmente usará o SQLite
+db_uri = os.getenv("DATABASE_URL", "sqlite:///sistema.db")
+# Ajuste de compatibilidade caso o Render forneça a URL começando com "postgres://"
+if db_uri.startswith("postgres://"):
+    db_uri = db_uri.replace("postgres://", "postgresql://", 1)
+
+app.config['SQLALCHEMY_DATABASE_URI'] = db_uri
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+# Inicializa o banco de dados no seu app Flask
+db = SQLAlchemy(app)
+
+
+# =======================================================
+# CONFIGURAÇÃO DE E-MAIL (SERVIDORES SMTP GMAIL)
+# =======================================================
+app.config['MAIL_SERVER'] = 'smtp.gmail.com'
+app.config['MAIL_PORT'] = 587
+app.config['MAIL_USE_TLS'] = True
+app.config['MAIL_USERNAME'] = os.getenv("MAIL_USERNAME", "igordesouzacordeiro18@gmail.com")
+app.config['MAIL_PASSWORD'] = os.getenv("MAIL_PASSWORD", "wazo vmkl jdkk rguf")
+
+default_sender_email = os.getenv("MAIL_USERNAME", "igordesouzacordeiro18@gmail.com")
+app.config['MAIL_DEFAULT_SENDER'] = ('Suporte Sistema', default_sender_email)
+
+mail = Mail(app)
+serializer = URLSafeTimedSerializer(app.secret_key)
+#--------------------------------------------------------
+
+class Usuario(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    email = db.Column(db.String(120), unique=True, nullable=False)
+    senha = db.Column(db.String(200), nullable=False) # Guardará a senha criptografada (hash)
+    cargo = db.Column(db.String(20), default="funcionario") # "admin" ou "funcionario"
+    status = db.Column(db.String(20), default='ativo') # 'ativo' ou 'bloqueado'
+    validade_plano = db.Column(db.DateTime, nullable=False)
+
+    primeiro_acesso = db.Column(db.Boolean, default=True)
+
+    def plano_expirado(self):
+        return datetime.now() > self.validade_plano
+    
+
+class Produto(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    usuario_id = db.Column(db.Integer, db.ForeignKey('usuario.id'), nullable=False)
+    nome = db.Column(db.String(100), nullable=False)
+    preco = db.Column(db.Float, nullable=False)
+    estoque = db.Column(db.Integer, default=0)
+    estoque_minimo = db.Column(db.Integer, default=0)
+    custo = db.Column(db.Float, default=0.0)  # 🌟 ADICIONE ESTA LINHA!
+
+
+class Caixa(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    usuario_id = db.Column(db.Integer, db.ForeignKey('usuario.id'), nullable=False)
+    
+    aberto = db.Column(db.Boolean, default=False)
+    valor_inicial = db.Column(db.Float, default=0.0)
+    vendas_periodo = db.Column(db.Float, default=0.0)
+    saldo_final = db.Column(db.Float, default=0.0)
+    data_abertura = db.Column(db.String(20))   # Ex: "07/07/2026 18:48"
+    data_fechamento = db.Column(db.String(20)) # Fica vazio enquanto estiver aberto
+
+
+class Venda(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    usuario_id = db.Column(db.Integer, db.ForeignKey('usuario.id'), nullable=False)
+    caixa_id = db.Column(db.Integer, db.ForeignKey('caixa.id'), nullable=True) # Vincula ao caixa atual!
+    
+    valor_total = db.Column(db.Float, nullable=False)
+    data = db.Column(db.String(20)) # Ex: "09/07/2026 14:15"
+    produtos_vendidos = db.Column(db.Text, nullable=False) # Itens da venda em JSON
+    pagamento = db.Column(db.String(50), nullable=True) # 🌟 NOVA COLUNA PROFISSIONAL!
+
+class Troca(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    usuario_id = db.Column(db.Integer, db.ForeignKey('usuario.id'), nullable=False) # Garanta que a FK aponte para sua tabela de usuários (ex: usuario.id ou user.id)
+    data = db.Column(db.String(20), nullable=False)
+    produtos_devolvidos = db.Column(db.Text, nullable=False)  # Armazena a lista de devolvidos como string JSON
+    produtos_recebidos = db.Column(db.Text, nullable=False)    # Armazena a lista de novos como string JSON
+    credito = db.Column(db.Float, nullable=False)
+    total_compra = db.Column(db.Float, nullable=False)
+    saldo_diferenca = db.Column(db.Float, nullable=False)
+
+
+def obter_dados_do_cliente():
+    """Função mágica para carregar e garantir a estrutura limpa de cada cliente"""
+    id_logado = session.get("usuario_id")
+    if not id_logado:
+        return None
+        
+    dados_globais = carregar_dados()
+    id_key = str(id_logado)
+    
+    # Se o cliente não tiver dados ainda, cria do zero
+    if id_key not in dados_globais:
+        dados_globais[id_key] = {
+            "caixa": {"aberto": False, "data_abertura": "", "valor_inicial": 0.0, "vendas_periodo": 0.0},
+            "vendas": [],
+            "produtos": []
+        }
+        salvar_dados(dados_globais)
+        
+    return dados_globais[id_key]
+# =======================================================
+# ROTAS EXCLUSIVAS DO ADMINISTRADOR (PROTEGIDAS)
+# =======================================================
+
+EMAIL_ADMIN = "igordesouzacordeiro18@gmail.com"
+
+def apenas_admin(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        id_logado = session.get("usuario_id")
+        if not id_logado:
+            return redirect(url_for("login"))
+
+        # Se na sessão estiver como 'funcionario', bloqueia (mesmo que seja o dono testando)
+        cargo_sessao = session.get("cargo", "funcionario")
+        
+        if cargo_sessao != "admin":
+            flash("⚠️ Acesso restrito a Gerentes/Administradores.", "danger")
+            return redirect(url_for("dashboard")) # Redireciona para o dashboard, não pro login!
+            
+        return f(*args, **kwargs)
+    return decorated_function
+
+def verificar_se_eh_admin():
+    usuario_id = session.get("usuario_id")
+    if not usuario_id:
+        return False
+    user = Usuario.query.get(usuario_id)
+    if not user or not user.email:
+        return False
+    return user.email.strip().lower() == EMAIL_ADMIN.lower()
+
+@app.route("/admin")
+def painel_admin():
+    if not verificar_se_eh_admin():
+        flash("❌ Acesso negado! Esta área é restrita apenas ao administrador principal.")
+        return redirect(url_for("dashboard"))
+    
+    todos_clientes = Usuario.query.all()
+    return render_template("admin.html", clientes=todos_clientes)
+
+@app.route("/admin/cadastrar", methods=["POST"])
+def admin_cadastrar_cliente():
+    if not verificar_se_eh_admin():
+        flash("❌ Acesso negado! Ação não permitida.")
+        return redirect(url_for("dashboard"))
+        
+    email = request.form.get("email", "").strip()
+    senha = request.form.get("senha")
+    
+    if Usuario.query.filter_by(email=email).first():
+        flash("Esse e-mail já está cadastrado no sistema!")
+        return redirect(url_for("painel_admin"))
+        
+    senha_cripto = generate_password_hash(senha)
+    
+    # Se cadastrar o e-mail do admin, dá validade de 100 anos (vitalício)
+    if email.lower() == EMAIL_ADMIN.lower():
+        validade = datetime.now() + timedelta(days=36500)
+    else:
+        validade = datetime.now() + timedelta(days=30)
+    
+    novo_cliente = Usuario(email=email, senha=senha_cripto, validade_plano=validade)
+    db.session.add(novo_cliente)
+    db.session.commit()
+    
+    flash(f"Cliente {email} criado com sucesso!")
+    return redirect(url_for("painel_admin"))
+
+@app.route("/admin/alterar_status/<int:id>", methods=["POST"])
+def admin_alterar_status(id):
+    if not verificar_se_eh_admin():
+        flash("❌ Acesso negado! Ação não permitida.")
+        return redirect(url_for("dashboard"))
+        
+    user = Usuario.query.get_or_404(id)
+    user.status = "bloqueado" if user.status == "ativo" else "ativo"
+    db.session.commit()
+    
+    flash(f"Status do usuário {user.email} atualizado!")
+    return redirect(url_for("painel_admin"))
+
+@app.route("/admin/renovar/<int:id>", methods=["POST"])
+def admin_renovar_plano(id):
+    if not verificar_se_eh_admin():
+        flash("❌ Acesso negado! Ação não permitida.")
+        return redirect(url_for("dashboard"))
+        
+    user = Usuario.query.get_or_404(id)
+    if user.plano_expirado():
+        user.validade_plano = datetime.now() + timedelta(days=30)
+    else:
+        user.validade_plano = user.validade_plano + timedelta(days=30)
+        
+    db.session.commit()
+    flash(f"Plano de {user.email} renovado por mais 30 dias!")
+    return redirect(url_for("painel_admin"))
+
+@app.route("/alternar-modo", methods=["POST"])
+def alternar_modo():
+    dados = request.get_json() or {}
+    senha = dados.get("senha")
+    
+    usuario_id = session.get("usuario_id")
+    if not usuario_id:
+        return jsonify({"sucesso": False, "mensagem": "Usuário não autenticado."})
+
+    usuario = Usuario.query.get(usuario_id)
+    
+    # Valida a senha da conta logada para virar Admin
+    if usuario and check_password_hash(usuario.senha, senha):
+        session["cargo"] = "admin"  # Libera as abas no Jinja2
+        return jsonify({"sucesso": True, "mensagem": "Modo Gerente ativado!"})
+    else:
+        return jsonify({"sucesso": False, "mensagem": "Senha incorreta!"})
+
+
+@app.route("/bloquear-modo", methods=["POST"])
+def bloquear_modo():
+    # Permite mudar a sessão para funcionário (útil para testes do dono)
+    session["cargo"] = "funcionario"
+    return jsonify({"sucesso": True, "mensagem": "Modo Funcionário ativado!"})
+
+
+# =======================================================
+# ROTAS DE DEFINIÇÃO DE SENHA
+# =======================================================
+
+# 1. Mostra a página para o primeiro acesso
+@app.route("/definir-senha")
+def definir_senha():
+    if not session.get("usuario_id"):
+        return redirect("/")
+    return render_template("definir_senha.html")
+
+# 2. Valida e grava a nova senha oficial
+@app.route("/salvar-nova-senha", methods=["POST"])
+def salvar_nova_senha():
+    if not session.get("usuario_id"):
+        return redirect("/")
+        
+    nova_senha = request.form.get("nova_senha") 
+    confirmar_senha = request.form.get("confirmar_senha")
+    
+    # Valida se os campos vieram preenchidos
+    if nova_senha and confirmar_senha:
+        # Trava do Python: se forem diferentes, recarrega a página avisando o usuário
+        if nova_senha != confirmar_senha:
+            return render_template("definir_senha.html", erro="As senhas digitadas não coincidem. Tente novamente!")
+            
+        from werkzeug.security import generate_password_hash
+        
+        usuario = Usuario.query.get(session["usuario_id"])
+        
+        if usuario:
+            usuario.senha = generate_password_hash(nova_senha)
+            usuario.primeiro_acesso = False
+            
+            db.session.commit()
+            session.clear()
+            
+            print("🎉 SENHA ATUALIZADA COM SUCESSO NO BANCO DE DADOS!")
+            return redirect("/")
+            
+    return render_template("definir_senha.html", erro="Por favor, preencha todos os campos.")
+
+
+# =======================================================
+# ROTAS DE RECUPERAÇÃO DE SENHA VIA E-MAIL
+# =======================================================
+
+# 1. Rota para solicitar o e-mail e enviar o link seguro
+@app.route("/esqueci-senha", methods=["GET", "POST"])
+def esqueci_senha():
+    if request.method == "POST":
+        email_digitado = request.form.get("email", "").strip().lower()
+        usuario = Usuario.query.filter_by(email=email_digitado).first()
+
+        # Dentro da rota /esqueci-senha:
+        if usuario:
+            token = serializer.dumps(email_digitado, salt="recuperar-senha-salt")
+            
+            # Usando o seu IP local para funcionar em qualquer aparelho da casa
+            link_redefinicao = f"http://192.168.1.4:5000/redefinir-senha/{token}"
+
+            # Criar a mensagem
+            msg = Message("🔒 Recuperação de Senha - Sistema", recipients=[email_digitado])
+            msg.body = f"""Olá!
+
+Recebemos uma solicitação para redefinir a senha da sua conta no sistema.
+
+Para criar uma nova senha, clique no link abaixo (válido por 15 minutos):
+{link_redefinicao}
+
+Se você não solicitou essa alteração, ignore este e-mail.
+"""
+            try:
+                mail.send(msg)
+            except Exception as e:
+                print(f"Erro ao enviar e-mail: {e}")
+
+        # Mensagem genérica por segurança (impede invasores de descobrirem e-mails cadastrados)
+        flash("Se o e-mail estiver cadastrado em nosso sistema, você receberá as instruções de redefinição em instantes.")
+        return redirect(url_for("login"))
+
+    return render_template("esqueci_senha.html")
+
+
+# 2. Rota que abre quando o cliente clica no link do e-mail
+@app.route("/redefinir-senha/<token>", methods=["GET", "POST"])
+def redefinir_senha_token(token):
+    try:
+        # Valida o token e verifica se expirou (15 minutos = 900 segundos)
+        email = serializer.loads(token, salt="recuperar-senha-salt", max_age=900)
+    except (SignatureExpired, BadTimeSignature):
+        flash("❌ O link de redefinição é inválido ou expirou. Solicite um novo link.")
+        return redirect(url_for("esqueci_senha"))
+
+    if request.method == "POST":
+        nova_senha = request.form.get("nova_senha")
+        confirmar_senha = request.form.get("confirmar_senha")
+
+        if nova_senha and confirmar_senha:
+            if nova_senha != confirmar_senha:
+                return render_template("redefinir_senha_token.html", token=token, erro="As senhas não coincidem.")
+
+            usuario = Usuario.query.filter_by(email=email).first()
+            if usuario:
+                usuario.senha = generate_password_hash(nova_senha)
+                usuario.primeiro_acesso = False
+                db.session.commit()
+
+                flash("✅ Sua senha foi alterada com sucesso! Faça login com a nova senha.")
+                return redirect(url_for("login"))
+
+    return render_template("redefinir_senha_token.html", token=token)
+
+
+# =======================================================
+# ROTA DE LOGIN PRINCIPAL
+# =======================================================
+
+@app.route("/", methods=["GET", "POST"])
 def login():
+    if request.method == "POST":
+        email_digitado = request.form.get("email", "").strip()
+        senha_digitada = request.form.get("senha")
+
+        usuario = Usuario.query.filter_by(email=email_digitado).first()
+
+        if usuario:
+            if check_password_hash(usuario.senha, senha_digitada):
+                
+                # 🌟 ADMIN NUNCA EXPIRA
+                eh_admin = usuario.email and usuario.email.strip().lower() == EMAIL_ADMIN.lower()
+
+                if not eh_admin and usuario.plano_expirado():
+                    return render_template("login.html", erro="⚠️ Sua assinatura expirou. Regularize seu plano para acessar.")
+                
+                if usuario.status == "bloqueado":
+                    return render_template("login.html", erro="❌ Acesso suspenso. Entre em contato com o administrador.")
+
+                # 🔑 REGISTRO DA SESSÃO COM AS PERMISSÕES CORRETAS:
+                session["usuario_id"] = usuario.id
+                
+                # Se for o e-mail do admin principal ou se a coluna cargo for admin, grava 'admin'
+                cargo_efetivo = "admin" if (eh_admin or getattr(usuario, 'cargo', '') in ['admin', 'gerente']) else getattr(usuario, 'cargo', 'funcionario')
+                session["cargo"] = cargo_efetivo
+                
+                if hasattr(usuario, 'primeiro_acesso') and usuario.primeiro_acesso:
+                    return redirect(url_for("definir_senha"))
+                
+                return redirect(url_for("dashboard")) 
+            
+            else:
+                return render_template("login.html", erro="E-mail ou senha incorretos.")
+        else:
+            return render_template("login.html", erro="E-mail ou senha incorretos.")
+
     return render_template("login.html")
+#--------------------------------------------------------------------------------------------------
+@app.route("/logout")
+def logout():
+    session.clear() # Limpa toda a sessão
+    return redirect("/") # Manda de volta para o login
 
 @app.route("/dashboard")
 def dashboard():
+    id_logado = session.get("usuario_id")
+    if not id_logado:
+        return redirect("/")
 
-    global dados
+    # 1. Total de produtos cadastrados pelo usuário no banco
+    total_produtos = Produto.query.filter_by(usuario_id=id_logado).count()
 
-    dados = carregar_dados()
-
-    total_vendas = 0
-
-    if dados["caixa"]["aberto"]:
-
-        data_abertura = datetime.strptime(
-            dados["caixa"]["data_abertura"],
-            "%d/%m/%Y %H:%M"
-        )
-
-        for venda in dados["vendas"]:
-
-            data_venda = datetime.strptime(
-                venda["data"],
-                "%d/%m/%Y %H:%M"
-            )
-
-            if data_venda >= data_abertura:
-
-                total_vendas += 1
-
+    # 2. Busca o caixa atual do usuário
+    caixa_atual = Caixa.query.filter_by(usuario_id=id_logado, aberto=True).first()
     
-    total_produtos = len(dados["produtos"])
+    total_vendas_periodo = 0
+    valor_total_caixa = 0
+    ultimas_vendas_lista = []
 
-    if dados["caixa"]["aberto"]:
+    if caixa_atual:
+        # Busca todas as vendas que pertencem ao caixa que está aberto atualmente
+        vendas_caixa = Venda.query.filter_by(usuario_id=id_logado, caixa_id=caixa_atual.id).all()
+        total_vendas_periodo = len(vendas_caixa)
+        valor_total_caixa = caixa_atual.valor_inicial + caixa_atual.vendas_periodo
 
-        valor_total = (
-            dados["caixa"]["valor_inicial"]
-            +
-            dados["caixa"]["vendas_periodo"]
-        )
+        # Pega as últimas 5 vendas do período atual (da mais recente para a mais antiga)
+        for v in reversed(vendas_caixa):
+            if len(ultimas_vendas_lista) < 5:
+                # Carrega os produtos vendidos que salvamos em texto JSON
+                try:
+                    itens = json.loads(v.produtos_vendidos)
+                except:
+                    itens = []
+                
+                ultimas_vendas_lista.append({
+                    "id": v.id,
+                    "total": v.valor_total,
+                    "data": v.data,
+                    "itens": itens
+                })
 
-    else:
+    # 3. Estatísticas Gerais de todas as vendas do usuário (para os gráficos)
+    todas_vendas = Venda.query.filter_by(usuario_id=id_logado).all()
+    
+    contador_produtos = {}
+    total_pix = 0
+    total_cartao = 0
+    total_dinheiro = 0
 
-        valor_total = 0
+    for venda in todas_vendas:
+        # No SQLite, guardamos os produtos vendidos como String de JSON. Vamos decodificar:
+        try:
+            itens = json.loads(venda.produtos_vendidos)
+        except:
+            itens = []
 
-    ultimas_vendas = []
+        for item in itens:
+            nome_p = item.get("produto")
+            qtd = item.get("quantidade", 0)
+            if nome_p:
+                contador_produtos[nome_p] = contador_produtos.get(nome_p, 0) + qtd
 
-    if dados["caixa"]["aberto"]:
-
-        data_abertura = datetime.strptime(
-            dados["caixa"]["data_abertura"],
-            "%d/%m/%Y %H:%M"
-        )
-
-        vendas_periodo = []
-
-        for venda in dados["vendas"]:
-
-            data_venda = datetime.strptime(
-                venda["data"],
-                "%d/%m/%Y %H:%M"
-            )
-
-            if data_venda >= data_abertura:
-                vendas_periodo.append(venda)
-
-        ultimas_vendas = list(
-            reversed(vendas_periodo)
-        )[:5]
-
-    contador = {}
-
-    for venda in dados["vendas"]:
-        for item in venda["itens"]:
-            nome = item["produto"]
-
-            quantidade = item["quantidade"]
-
-            if nome in contador:
-
-                contador[nome] += quantidade
-
-            else:
-
-                contador[nome] = quantidade
-
-            if nome in contador:
-
-                contador[nome] += quantidade
-
-            else:
-
-                contador[nome] = quantidade
+        # Classificação básica de pagamentos para os cards do dashboard
+        # (Se quiser melhorar no futuro salvando a forma de pagamento na tabela Venda, já temos a lógica engatilhada!)
+        total_dinheiro += venda.valor_total # Por enquanto, soma tudo como dinheiro se não houver campo específico
 
     produto_mais_vendido = "Nenhum"
-
-    if contador:
-
-        produto_mais_vendido = max(
-            contador,
-            key=contador.get
-        )
-
-    pix = sum(
-        venda["total"]
-        for venda in dados["vendas"]
-        if venda["pagamento"] == "Pix"
-    )
-
-    cartao = sum(
-        venda["total"]
-        for venda in dados["vendas"]
-        if (
-            venda["pagamento"] == "Débito"
-            or
-            "Crédito" in venda["pagamento"]
-        )
-    )
-
-    dinheiro = sum(
-        venda["total"]
-        for venda in dados["vendas"]
-        if venda["pagamento"] == "Dinheiro"
-    )
+    if contador_produtos:
+        produto_mais_vendido = max(contador_produtos, key=contador_produtos.get)
 
     return render_template(
         "dashboard.html",
-        total_vendas=total_vendas,
+        total_vendas=total_vendas_periodo,
         total_produtos=total_produtos,
-        valor_total=valor_total,
-        ultimas_vendas=ultimas_vendas,
+        valor_total=valor_total_caixa,
+        ultimas_vendas=ultimas_vendas_lista,
         produto_mais_vendido=produto_mais_vendido,
-        pix=pix,
-        cartao=cartao,
-        dinheiro=dinheiro
+        pix=total_pix,
+        cartao=total_cartao,
+        dinheiro=total_dinheiro
     )
 
+
+# 1. ROTA PARA LISTAR OS PRODUTOS DO USUÁRIO LOGADO
 @app.route("/produtos")
 def produtos():
+    id_logado = session.get("usuario_id")
+    if not id_logado:
+        return redirect("/")
 
-    produtos_ordenados = sorted(
-        dados["produtos"],
-        key=lambda p: p["nome"].lower()
+    # Busca no banco APENAS os produtos que pertencem ao usuário logado e ordena por nome
+    produtos_usuario = Produto.query.filter_by(usuario_id=id_logado).order_by(Produto.nome.asc()).all()
+
+    return render_template("produtos.html", produtos=produtos_usuario)
+
+
+# 2. ROTA QUE APENAS MOSTRA A TELA DO FORMULÁRIO
+@app.route("/novo-produto")
+def novo_produto():
+    if not session.get("usuario_id"):
+        return redirect("/")
+    return render_template("novo_produto.html")
+
+
+# 3. ROTA QUE RECEBE OS DADOS DO HTML E SALVA DE VERDADE NO SQLITE
+@app.route("/salvar-produto", methods=["POST"])
+@apenas_admin
+def cadastrar_produto():
+    id_logado = session.get("usuario_id")
+    if not id_logado:
+        return redirect("/")
+
+    # Captura os dados enviados pelo formulário HTML
+    nome = request.form.get("nome")
+    preco_texto = request.form.get("preco")
+    custo_texto = request.form.get("custo") or "0"
+    estoque_texto = request.form.get("estoque") or "0"
+
+    try:
+        preco = float(preco_texto)
+        custo = float(custo_texto)
+        estoque = int(estoque_texto)
+    except (ValueError, TypeError):
+        return "❌ Valores numéricos inválidos enviados no formulário.", 400
+
+    # Cria o novo objeto Produto usando o modelo do SQLite
+    novo_produto = Produto(
+        usuario_id=id_logado, # Vincula diretamente ao usuário dono da sessão!
+        nome=nome.strip(),
+        preco=preco,
+        custo=custo,
+        estoque=estoque
     )
 
-    return render_template(
-        "produtos.html",
-        produtos=produtos_ordenados
-    )
+    # Adiciona e salva permanentemente no banco de dados
+    db.session.add(novo_produto)
+    db.session.commit()
+
+    print(f"📦 PRODUTO CADASTRADO NO SQLITE COM SUCESSO: {nome}")
+    return redirect("/produtos")
+
+
 
 @app.route("/salvar-venda", methods=["POST"])
 def salvar_venda():
+    id_logado = session.get("usuario_id")
+    if not id_logado:
+        return "❌ Usuário não autenticado", 401
 
-    global dados
-
-    dados = carregar_dados()
-
-    if not dados["caixa"]["aberto"]:
-
+    # 1. Verifica se o caixa está aberto no SQLite
+    caixa_atual = Caixa.query.filter_by(usuario_id=id_logado, aberto=True).first()
+    if not caixa_atual:
         return """
         <script>
             alert('❌ Abra o caixa antes de realizar uma venda.');
@@ -173,641 +562,445 @@ def salvar_venda():
         </script>
         """
 
+    # 2. Carrega o carrinho enviado pelo front-end
     carrinho_json = request.form.get("carrinho")
-
     if not carrinho_json:
         return "❌ Carrinho vazio"
 
-    carrinho = json.loads(carrinho_json)
+    try:
+        carrinho = json.loads(carrinho_json)
+    except json.JSONDecodeError:
+        return "❌ Erro ao processar os itens do carrinho.", 400
 
     pagamento1 = request.form.get("pagamento1")
     valor1 = request.form.get("valor1")
-
     pagamento2 = request.form.get("pagamento2")
     valor2 = request.form.get("valor2")
+    valor_pago_cliente = float(request.form.get("valor_pago") or 0)
 
+    # Organiza os pagamentos de forma detalhada
     pagamentos = []
-
     if pagamento1:
-
-        pagamentos.append({
-            "tipo": pagamento1,
-            "valor": float(valor1 or 0)
-        })
-
+        pagamentos.append({"tipo": pagamento1, "valor": float(valor1 or 0)})
     if pagamento2:
+        pagamentos.append({"tipo": pagamento2, "valor": float(valor2 or 0)})
 
-        pagamentos.append({
-            "tipo": pagamento2,
-            "valor": float(valor2 or 0)
-        })
-
-    if len(pagamentos) == 1:
-        pagamento = pagamentos[0]["tipo"]
+    # SE FOR PAGAMENTO MISTO: Grava o JSON dos pagamentos no campo
+    # SE FOR PAGAMENTO ÚNICO: Grava apenas a string (ex: "Dinheiro", "Pix")
+    if len(pagamentos) > 1:
+        pagamento_str = json.dumps(pagamentos, ensure_ascii=False)
+    elif len(pagamentos) == 1:
+        pagamento_str = pagamentos[0]["tipo"]
     else:
-        pagamento = "Pagamento Misto"
+        pagamento_str = "Dinheiro"
 
     total_geral = 0
-    itens = []
+    itens_vendidos_lista = []
 
+    # 3. Processa cada item do carrinho
     for item in carrinho:
+        nome_produto = item["nome"].split(" - R$")[0].strip()
+        produto = Produto.query.filter_by(usuario_id=id_logado, nome=nome_produto).first()
 
-        produto_encontrado = None
+        if not produto:
+            return f"❌ Produto não encontrado no banco: {nome_produto}", 404
 
-        nome_produto = (
-            item["nome"]
-            .split(" - R$")
-            [0]
-            .strip()
-        )
+        if item["quantidade"] >= produto.estoque:
+            produto.estoque = 0
+        else:
+            produto.estoque -= item["quantidade"]
 
-        for produto in dados["produtos"]:
-
-            if produto["nome"].strip() == nome_produto.strip():
-
-                produto_encontrado = produto
-                break
-
-        if produto_encontrado is None:
-
-            return f"""
-            ❌ Produto não encontrado:
-            {item['nome']}
-            """
-
-        if produto_encontrado["estoque"] > 0:
-
-            if item["quantidade"] > produto_encontrado["estoque"]:
-
-                return f"""
-                ❌ Estoque insuficiente para:
-                {item['nome']}
-
-                Estoque atual:
-                {produto_encontrado['estoque']}
-                """
-
-        subtotal = (
-            produto_encontrado["preco"]
-            * item["quantidade"]
-        )
-
-        lucro_item = (
-            (
-                produto_encontrado["preco"]
-                -
-                produto_encontrado["custo"]
-            )
-            *
-            item["quantidade"]
-        )
-
-        if produto_encontrado["estoque"] > 0:
-
-            produto_encontrado["estoque"] -= (
-                item["quantidade"]
-            )
-
+        subtotal = produto.preco * item["quantidade"]
         total_geral += subtotal
 
-        itens.append({
-
-            "produto":
-            produto_encontrado["nome"],
-
-            "quantidade":
-            item["quantidade"],
-
-            "subtotal":
-            subtotal,
-
-            "lucro":
-            lucro_item
-
+        itens_vendidos_lista.append({
+            "produto": produto.nome,
+            "quantidade": item["quantidade"],
+            "preco_unitario": produto.preco,
+            "subtotal": subtotal
         })
 
-    # valida somente pagamento misto
-
-    if pagamento2:
-
-        total_pagamentos = sum(
-            p["valor"]
-            for p in pagamentos
-        )
-
-        diferenca = round(
-            total_pagamentos - total_geral,
-            2
-        )
-
-
-    venda = {
-
-        "id":
-        len(dados["vendas"]) + 1,
-
-        "itens":
-        itens,
-
-        "total":
-        total_geral,
-
-        "pagamento":
-        pagamento,
-
-        "pagamentos":
-        pagamentos,
-
-        "data":
-        datetime.now().strftime(
-            "%d/%m/%Y %H:%M"
-        )
-    }
-
-    dados["vendas"].append(venda)
-
-    if dados["caixa"]["aberto"]:
-
-        dados["caixa"]["vendas_periodo"] += total_geral
-
-    salvar_dados(dados)
-
-    return redirect("/historico")
-
-
-@app.route("/salvar-produto", methods=["POST"])
-def salvar_produto():
-
-    global dados
-
-    dados = carregar_dados()
-
-    nome = request.form["nome"].strip()
-
-    preco = float(
-        request.form["preco"]
+    # 4. Registra a nova Venda na tabela
+    nova_venda_db = Venda(
+        usuario_id=id_logado,
+        caixa_id=caixa_atual.id,
+        valor_total=total_geral,
+        data=datetime.now().strftime("%d/%m/%Y %H:%M"),
+        produtos_vendidos=json.dumps(itens_vendidos_lista, ensure_ascii=False),
+        pagamento=pagamento_str  # <--- Guarda a quebra exata do pagamento aqui!
     )
 
-    novo_id = 1
+    # 5. Atualiza o faturamento do Caixa
+    caixa_atual.vendas_periodo += total_geral
 
-    if dados["produtos"]:
+    db.session.add(nova_venda_db)
+    db.session.commit()
 
-        novo_id = max(
-            produto["id"]
-            for produto in dados["produtos"]
-        ) + 1
+    print(f"💰 VENDA REGISTRADA NO SQLITE! Total: R$ {total_geral:.2f}")
+    return redirect("/historico")
 
-    produto = {
-
-        "id":
-        novo_id,
-
-        "nome":
-        nome,
-
-        "preco":
-        preco,
-
-        "estoque":
-        0,
-
-        "estoque_minimo":
-        0,
-
-        "custo":
-        0
-    }
-
-    dados["produtos"].append(produto)
-
-    salvar_dados(dados)
-
-    return redirect("/produtos")
-
-
-@app.route("/novo-produto")
-def novo_produto():
-    return render_template("novo_produto.html")
 
 
 @app.route("/excluir-venda/<int:id>")
 def excluir_venda(id):
+    id_logado = session.get("usuario_id")
+    if not id_logado:
+        return redirect("/")
 
-    venda_encontrada = None
+    venda = Venda.query.filter_by(id=id, usuario_id=id_logado).first()
 
-    for venda in dados["vendas"]:
+    if venda:
+        # 1. Devolve os itens vendidos de volta ao estoque no SQLite
+        try:
+            itens = json.loads(venda.produtos_vendidos)
+        except:
+            itens = []
 
-        if venda["id"] == id:
+        for item in itens:
+            produto = Produto.query.filter_by(usuario_id=id_logado, nome=item["produto"]).first()
+            if produto:
+                produto.estoque += item["quantidade"]
 
-            venda_encontrada = venda
-            break
+        # 2. Desconta o valor da venda do caixa ativo (se a venda pertencer ao caixa aberto)
+        caixa_atual = Caixa.query.filter_by(usuario_id=id_logado, aberto=True).first()
+        if caixa_atual and venda.caixa_id == caixa_atual.id:
+            caixa_atual.vendas_periodo = max(0.0, caixa_atual.vendas_periodo - venda.valor_total)
 
-    if venda_encontrada is None:
-
-        return redirect("/historico")
-
-    for item in venda_encontrada["itens"]:
-
-        for produto in dados["produtos"]:
-
-            if produto["nome"] == item["produto"]:
-
-                produto["estoque"] += item["quantidade"]
-
-                break
-
-    dados["vendas"].remove(venda_encontrada)
-
-    salvar_dados(dados)
+        # 3. Deleta a venda
+        db.session.delete(venda)
+        db.session.commit()
 
     return redirect("/historico")
 
+
+# 1. EXCLUIR PRODUTO DO BANCO
 @app.route("/excluir-produto/<int:id>")
 def excluir_produto(id):
+    id_logado = session.get("usuario_id")
+    if not id_logado:
+        return redirect("/")
 
-    produto_encontrado = None
+    # Garante que o produto pertence ao usuário logado antes de excluir (segurança!)
+    produto = Produto.query.filter_by(id=id, usuario_id=id_logado).first()
 
-    for produto in dados["produtos"]:
-
-        if produto["id"] == id:
-
-            produto_encontrado = produto
-            break
-
-    if produto_encontrado is not None:
-
-        dados["produtos"].remove(produto_encontrado)
-
-        salvar_dados(dados)
+    if produto:
+        db.session.delete(produto)
+        db.session.commit()
 
     return redirect("/produtos")
 
 
+# 2. MOSTRAR A TELA DE EDIÇÃO COM OS DADOS DO BANCO
 @app.route("/editar-produto/<int:id>")
 def editar_produto(id):
+    id_logado = session.get("usuario_id")
+    if not id_logado:
+        return redirect("/")
 
-    produto_encontrado = None
+    # Busca o produto no SQLite
+    produto = Produto.query.filter_by(id=id, usuario_id=id_logado).first()
+    
+    if not produto:
+        return "Produto não encontrado", 404
 
-    for produto in dados["produtos"]:
+    return render_template("editar_produto.html", produto=produto)
 
-        if produto["id"] == id:
 
-            produto_encontrado = produto
-
-            break
-
-    return render_template(
-        "editar_produto.html",
-        produto=produto_encontrado
-    )
-
+# 3. ATUALIZAR OS DADOS DO PRODUTO NO BANCO
 @app.route("/atualizar-produto/<int:id>", methods=["POST"])
 def atualizar_produto(id):
+    id_logado = session.get("usuario_id")
+    if not id_logado:
+        return redirect("/")
 
-    nome = request.form["nome"]
+    produto = Produto.query.filter_by(id=id, usuario_id=id_logado).first()
 
-    preco = float(request.form["preco"])
+    if produto:
+        produto.nome = request.form.get("nome")
+        try:
+            produto.preco = float(request.form.get("preco"))
+            # Se o seu formulário de edição tiver estoque e custo, pode atualizar aqui também!
+        except (ValueError, TypeError):
+            return "❌ Preço inválido.", 400
 
-    for produto in dados["produtos"]:
-
-        if produto["id"] == id:
-
-            produto["nome"] = nome
-            produto["preco"] = preco
-
-            break
-
-    salvar_dados(dados)
+        db.session.commit()
 
     return redirect("/produtos")
 
 @app.route("/nova-venda")
 def nova_venda():
+    id_logado = session.get("usuario_id")
+    if not id_logado:
+        return redirect("/")
 
-    dados = carregar_dados()
+    # 1. Busca os produtos do usuário logado direto do SQLite (ordenados por nome)
+    produtos_ordenados = Produto.query.filter_by(usuario_id=id_logado).order_by(Produto.nome.asc()).all()
 
-    produtos_ordenados = sorted(
-        dados["produtos"],
-        key=lambda p: p["nome"].lower()
-    )
+    # 2. 🌟 CORREÇÃO: Busca o caixa do usuário que esteja REALMENTE ABERTO
+    caixa_atual = Caixa.query.filter_by(usuario_id=id_logado, aberto=True).first()
+    
+    # Se encontrou um caixa aberto no banco, passa True, senão False
+    caixa_aberto = True if caixa_atual else False
 
     return render_template(
         "nova_venda.html",
         produtos=produtos_ordenados,
-        caixa_aberto=dados["caixa"]["aberto"]
+        caixa_aberto=caixa_aberto
     )
+
 
 @app.route("/historico")
 def historico():
+    id_logado = session.get("usuario_id")
+    if not id_logado:
+        return redirect("/")
 
-    vendas_ordenadas = sorted(
-        dados["vendas"],
-        key=lambda v: datetime.strptime(
-            v["data"],
-            "%d/%m/%Y %H:%M"
-        ),
-        reverse=True
-    )
+    # 1. Busca todas as vendas do usuário logado no SQLite (mais recentes primeiro)
+    vendas_db = Venda.query.filter_by(usuario_id=id_logado).all()
+    vendas_formatadas = []
+    
+    for v in reversed(vendas_db):
+        try:
+            itens = json.loads(v.produtos_vendidos)
+        except:
+            itens = []
 
-    total_vendido = sum(
-        venda["total"]
-        for venda in dados["vendas"]
-    )
+        # 🌟 Trata e formata a forma de pagamento (seja JSON, Pagamento Misto ou Texto simples)
+        pgto_raw = v.pagamento or "Não informado"
+        pgto_exibicao = pgto_raw
+
+        try:
+            pgto_json = json.loads(pgto_raw)
+            if isinstance(pgto_json, list):
+                # Converte o JSON [{"tipo": "Pix", "valor": 20.0}, ...] em "Pix: R$ 20.00 | Débito: R$ 30.00"
+                partes = [f"{p.get('tipo', 'Forma')}: R$ {float(p.get('valor', 0)):.2f}" for p in pgto_json]
+                pgto_exibicao = " | ".join(partes)
+        except (json.JSONDecodeError, TypeError):
+            # Mantém o texto como está se não for um JSON válido (ex: "Pix", "Pagamento Misto", etc.)
+            pgto_exibicao = pgto_raw
+            
+        vendas_formatadas.append({
+            "id": v.id,
+            "total": v.valor_total,
+            "data": v.data,
+            "itens": itens,
+            "pagamento": pgto_exibicao # 🌟 Retorna a string pronta e formatada!
+        })
+
+    # 2. Busca o faturamento do caixa atual do SQLite para exibir o "total"
+    caixa_atual = Caixa.query.filter_by(usuario_id=id_logado, aberto=True).first()
+    faturamento_caixa = caixa_atual.vendas_periodo if caixa_atual else 0.0
+
+    # 3. Busca todas as trocas do usuário logado no SQLite (mais recentes primeiro)
+    trocas_db = Troca.query.filter_by(usuario_id=id_logado).all()
+    trocas_formatadas = []
+
+    for t in reversed(trocas_db):
+        try:
+            devolvidos = json.loads(t.produtos_devolvidos)
+        except:
+            devolvidos = []
+
+        try:
+            recebidos = json.loads(t.produtos_recebidos)
+        except:
+            recebidos = []
+
+        trocas_formatadas.append({
+            "id": t.id,
+            "data": t.data,
+            "credito": t.credito,
+            "total_compra": t.total_compra,
+            "saldo_diferenca": t.saldo_diferenca,
+            "devolvidos": devolvidos,
+            "novos": recebidos
+        })
 
     return render_template(
         "historico.html",
-        vendas=vendas_ordenadas,
-        total=total_vendido
+        vendas=vendas_formatadas, 
+        trocas=trocas_formatadas, 
+        total=faturamento_caixa
     )
+
+def processar_totais_pagamento(vendas_lista):
+    """Lê as vendas (seja misto ou único) e devolve a soma exata por tipo de pagamento"""
+    pix = 0.0
+    dinheiro = 0.0
+    cartao = 0.0
+
+    for venda in vendas_lista:
+        pgto_raw = getattr(venda, "forma_pagamento", None) or getattr(venda, "pagamento", None) or getattr(venda, "metodo_pagamento", None) or ""
+        
+        # Tenta interpretar se o campo de pagamento é um JSON de Pagamento Misto
+        eh_misto = False
+        try:
+            pagamentos_detalhados = json.loads(pgto_raw)
+            if isinstance(pagamentos_detalhados, list):
+                eh_misto = True
+                for p in pagamentos_detalhados:
+                    tipo = str(p.get("tipo", "")).strip().lower()
+                    val = float(p.get("valor", 0.0))
+
+                    if "pix" in tipo:
+                        pix += val
+                    elif any(termo in tipo for termo in ["cart", "debito", "débito", "credito", "crédito"]):
+                        cartao += val
+                    else:
+                        dinheiro += val
+        except:
+            eh_misto = False
+
+        # Se for pagamento simples (uma forma única)
+        if not eh_misto:
+            pgto = str(pgto_raw).strip().lower()
+            val = venda.valor_total or 0.0
+
+            if "pix" in pgto:
+                pix += val
+            elif any(termo in pgto for termo in ["cart", "debito", "débito", "credito", "crédito"]):
+                cartao += val
+            else:
+                dinheiro += val
+
+    return pix, dinheiro, cartao
 
 
 @app.route("/relatorios")
 def relatorios():
-
-    return render_template(
-        "central_relatorios.html"
-    )
+    return render_template("central_relatorios.html")
 
 
 @app.route("/relatorio-financeiro")
+@apenas_admin
 def relatorio_financeiro():
-
-    global dados
-
-    dados = carregar_dados()
+    id_logado = session.get("usuario_id")
+    if not id_logado:
+        return redirect("/")
 
     filtro = request.args.get("filtro", "hoje")
-
     hoje = datetime.now()
 
+    todas_vendas = Venda.query.filter_by(usuario_id=id_logado).all()
     vendas_filtradas = []
 
-    for venda in dados["vendas"]:
-
-        data_venda = datetime.strptime(
-            venda["data"],
-            "%d/%m/%Y %H:%M"
-        )
+    for venda in todas_vendas:
+        try:
+            data_venda = datetime.strptime(venda.data, "%d/%m/%Y %H:%M")
+        except (ValueError, TypeError):
+            continue
 
         if filtro == "hoje":
-
             if data_venda.date() == hoje.date():
                 vendas_filtradas.append(venda)
-
         elif filtro == "semana":
-
-            if (
-                data_venda.isocalendar()[1]
-                ==
-                hoje.isocalendar()[1]
-            ):
+            if data_venda.isocalendar()[1] == hoje.isocalendar()[1] and data_venda.year == hoje.year:
                 vendas_filtradas.append(venda)
-
         elif filtro == "mes":
-
-            if (
-                data_venda.month == hoje.month
-                and
-                data_venda.year == hoje.year
-            ):
+            if data_venda.month == hoje.month and data_venda.year == hoje.year:
                 vendas_filtradas.append(venda)
-
         elif filtro == "ano":
-
             if data_venda.year == hoje.year:
                 vendas_filtradas.append(venda)
 
-    total = sum(
-        venda["total"]
-        for venda in vendas_filtradas
-    )
-
-    pix = sum(
-        venda["total"]
-        for venda in vendas_filtradas
-        if venda["pagamento"] == "Pix"
-    )
-
-    dinheiro = sum(
-        venda["total"]
-        for venda in vendas_filtradas
-        if venda["pagamento"] == "Dinheiro"
-    )
-
-    cartao = sum(
-        venda["total"]
-        for venda in vendas_filtradas
-        if (
-            venda["pagamento"] == "Débito"
-            or
-            "Crédito" in venda["pagamento"]
-        )
-    )
-
-    lucro = 0
-
-    for venda in vendas_filtradas:
-
-        for item in venda["itens"]:
-
-            lucro += item.get("lucro", 0)
-
+    total = sum(v.valor_total for v in vendas_filtradas)
     
+    # 🌟 Processa os meios de pagamento separando pagamentos mistos!
+    pix, dinheiro, cartao = processar_totais_pagamento(vendas_filtradas)
+
+    # Cálculo do Lucro
+    lucro = 0.0
+    for venda in vendas_filtradas:
+        try:
+            itens = json.loads(venda.produtos_vendidos)
+        except:
+            itens = []
+
+        for item in itens:
+            nome_prod = item.get("produto")
+            qtd = item.get("quantidade", 0)
+            preco_venda_item = item.get("preco_unitario", 0.0)
+
+            prod = Produto.query.filter_by(usuario_id=id_logado, nome=nome_prod).first()
+            if prod and prod.custo and prod.custo > 0:
+                lucro += (preco_venda_item - prod.custo) * qtd
+
     return render_template(
         "relatorio_financeiro.html",
-        total=total,
-        pix=pix,
-        dinheiro=dinheiro,
-        cartao=cartao,
-        lucro=lucro
-    )
-
-@app.route("/relatorio-caixa")
-def relatorio_caixa():
-
-    dados = carregar_dados()
-
-    return render_template(
-        "relatorio_caixa.html",
-        historico_caixa=dados["historico_caixa"]
+        total=round(total, 2),
+        pix=round(pix, 2),
+        dinheiro=round(dinheiro, 2),
+        cartao=round(cartao, 2),
+        lucro=round(lucro, 2),
+        filtro=filtro
     )
 
 
 @app.route("/relatorio-graficos")
+@apenas_admin
 def relatorio_graficos():
+    id_logado = session.get("usuario_id")
+    if not id_logado:
+        return redirect("/")
 
-    dados = carregar_dados()
+    filtro = request.args.get("filtro", "semana")
+    hoje = datetime.now()
 
-    filtro = request.args.get(
-        "filtro",
-        "semana"
-    )
+    vendas_db = Venda.query.filter_by(usuario_id=id_logado).all()
 
-    pix = sum(
-        venda["total"]
-        for venda in dados["vendas"]
-        if venda["pagamento"] == "Pix"
-    )
-
-    dinheiro = sum(
-        venda["total"]
-        for venda in dados["vendas"]
-        if venda["pagamento"] == "Dinheiro"
-    )
-
-    cartao = sum(
-        venda["total"]
-        for venda in dados["vendas"]
-        if (
-            venda["pagamento"] == "Débito"
-            or
-            "Crédito" in venda["pagamento"]
-        )
-    )
+    # 🌟 Calcula Pix, Dinheiro e Cartão de forma exata para o gráfico de pizza/rosca!
+    pix, dinheiro, cartao = processar_totais_pagamento(vendas_db)
 
     vendas_por_periodo = defaultdict(float)
 
-    hoje = datetime.now()
-
-    for venda in dados["vendas"]:
-
-        data_venda = datetime.strptime(
-            venda["data"],
-            "%d/%m/%Y %H:%M"
-        )
-
-        if filtro == "semana":
-
-            if (
-                data_venda.isocalendar()[1]
-                ==
-                hoje.isocalendar()[1]
-            ):
-
-                chave = data_venda.strftime(
-                    "%d/%m"
-                )
-
-                vendas_por_periodo[chave] += (
-                    venda["total"]
-                )
-
-        elif filtro == "mes":
-
-            if (
-                data_venda.month == hoje.month
-                and
-                data_venda.year == hoje.year
-            ):
-
-                chave = data_venda.strftime(
-                    "%d"
-                )
-
-                vendas_por_periodo[chave] += (
-                    venda["total"]
-                )
-
-        elif filtro == "ano":
-
-            if data_venda.year == hoje.year:
-
-                meses = [
-                    "Jan", "Fev", "Mar", "Abr",
-                    "Mai", "Jun", "Jul", "Ago",
-                    "Set", "Out", "Nov", "Dez"
-                ]
-
-                chave = meses[
-                    data_venda.month - 1
-                ]
-
-                vendas_por_periodo[chave] += (
-                    venda["total"]
-                )
-
-    
-    ordem_meses = [
-        "Jan", "Fev", "Mar", "Abr",
-        "Mai", "Jun", "Jul", "Ago",
-        "Set", "Out", "Nov", "Dez"
-    ]
-
-    if filtro == "ano":
-
-        datas = [
-            mes
-            for mes in ordem_meses
-            if mes in vendas_por_periodo
-        ]
-
-        valores = [
-            vendas_por_periodo[mes]
-            for mes in datas
-        ]
-
-    else:
-
-        datas = sorted(
-            vendas_por_periodo.keys()
-        )
-
-        valores = [
-            vendas_por_periodo[data]
-            for data in datas
-        ]
-
-    dias_semana = {
-        "Seg": 0,
-        "Ter": 0,
-        "Qua": 0,
-        "Qui": 0,
-        "Sex": 0,
-        "Sáb": 0,
-        "Dom": 0
-    }
-
-    hoje = datetime.now()
-
-    semana_atual = hoje.isocalendar()[1]
-    ano_atual = hoje.year
-
-    for venda in dados["vendas"]:
-
-        data_venda = datetime.strptime(
-            venda["data"],
-            "%d/%m/%Y %H:%M"
-        )
-
-        if (
-            data_venda.isocalendar()[1]
-            != semana_atual
-            or
-            data_venda.year != ano_atual
-        ):
+    for venda in vendas_db:
+        try:
+            data_venda = datetime.strptime(venda.data, "%d/%m/%Y %H:%M")
+        except:
             continue
 
-        dia = data_venda.weekday()
+        if filtro == "semana":
+            if data_venda.isocalendar()[1] == hoje.isocalendar()[1] and data_venda.year == hoje.year:
+                chave = data_venda.strftime("%d/%m")
+                vendas_por_periodo[chave] += venda.valor_total
+        elif filtro == "mes":
+            if data_venda.month == hoje.month and data_venda.year == hoje.year:
+                chave = data_venda.strftime("%d")
+                vendas_por_periodo[chave] += venda.valor_total
+        elif filtro == "ano":
+            if data_venda.year == hoje.year:
+                meses = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"]
+                chave = meses[data_venda.month - 1]
+                vendas_por_periodo[chave] += venda.valor_total
 
-        dias = [
-            "Seg",
-            "Ter",
-            "Qua",
-            "Qui",
-            "Sex",
-            "Sáb",
-            "Dom"
-        ]
+    ordem_meses = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"]
 
-        dias_semana[
-            dias[dia]
-        ] += venda["total"]
+    if filtro == "ano":
+        datas = [mes for mes in ordem_meses if mes in vendas_por_periodo]
+        valores = [vendas_por_periodo[mes] for mes in datas]
+    else:
+        datas = sorted(vendas_por_periodo.keys())
+        valores = [vendas_por_periodo[data] for data in datas]
+
+    dias_semana = {"Seg": 0.0, "Ter": 0.0, "Qua": 0.0, "Qui": 0.0, "Sex": 0.0, "Sáb": 0.0, "Dom": 0.0}
+    semana_atual = hoje.isocalendar()[1]
+
+    for venda in vendas_db:
+        try:
+            data_venda = datetime.strptime(venda.data, "%d/%m/%Y %H:%M")
+        except:
+            continue
+
+        if data_venda.isocalendar()[1] == semana_atual and data_venda.year == hoje.year:
+            dia = data_venda.weekday()
+            dias_nomes = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"]
+            dias_semana[dias_nomes[dia]] += venda.valor_total
 
     return render_template(
         "relatorio_graficos.html",
-        pix=pix,
-        dinheiro=dinheiro,
-        cartao=cartao,
+        pix=round(pix, 2),
+        dinheiro=round(dinheiro, 2),
+        cartao=round(cartao, 2),
         datas=datas,
         valores=valores,
         filtro=filtro,
@@ -816,65 +1009,99 @@ def relatorio_graficos():
     )
 
 
-@app.route("/relatorio-produtos")
-def relatorio_produtos():
+@app.route("/relatorio-caixa")
+def relatorio_caixa():
+    id_logado = session.get("usuario_id")
+    if not id_logado:
+        return redirect("/")
 
-    dados = carregar_dados()
+    caixas_db = Caixa.query.filter_by(usuario_id=id_logado).order_by(Caixa.id.desc()).limit(100).all()
+
+    historico_caixa = []
+    for c in caixas_db:
+        # 1. Pega os valores registrados
+        inicial = c.valor_inicial or 0.0
+        final = c.saldo_final or 0.0
+
+        # 2. Tenta pegar o valor de vendas direto do caixa
+        val_vendas = getattr(c, 'total_vendas', None)
+        if val_vendas is None:
+            val_vendas = getattr(c, 'vendas', None)
+
+        # 3. SE O VALOR DE VENDAS ESTIVER ZERADO / NONE:
+        # Se o caixa tem saldo final, calcula pela diferença: (Saldo Final - Valor Inicial)
+        if (not val_vendas or val_vendas == 0) and final > 0:
+            val_vendas = max(0.0, final - inicial)
+        elif not val_vendas:
+            val_vendas = 0.0
+
+        # Formatação das Datas
+        abertura = c.data_abertura.strftime("%d/%m/%Y %H:%M") if hasattr(c.data_abertura, 'strftime') else (c.data_abertura or "N/A")
+        
+        fechamento = "Em Aberto 🟢"
+        if c.data_fechamento and str(c.data_fechamento) != "None":
+            fechamento = c.data_fechamento.strftime("%d/%m/%Y %H:%M") if hasattr(c.data_fechamento, 'strftime') else c.data_fechamento
+
+        historico_caixa.append({
+            "data_abertura": abertura,
+            "data_fechamento": fechamento,
+            "valor_inicial": inicial,
+            "vendas": val_vendas,
+            "saldo_final": final
+        })
+
+    return render_template(
+        "relatorio_caixa.html",
+        historico_caixa=historico_caixa
+    )
+
+
+
+@app.route("/relatorio-produtos")
+@apenas_admin
+def relatorio_produtos():
+    id_logado = session.get("usuario_id")
+    if not id_logado:
+        return redirect("/")
+
+    vendas_db = Venda.query.filter_by(usuario_id=id_logado).all()
 
     produtos_vendidos = {}
     produtos_lucro = {}
 
-    for venda in dados["vendas"]:
+    for venda in vendas_db:
+        try:
+            itens = json.loads(venda.produtos_vendidos)
+        except:
+            itens = []
 
-        for item in venda["itens"]:
+        for item in itens:
+            nome = item.get("produto")
+            quantidade = item.get("quantidade", 0)
+            preco_venda_item = item.get("preco_unitario", 0.0)
 
-            nome = item["produto"]
+            if not nome:
+                continue
 
-            quantidade = item["quantidade"]
+            produtos_vendidos[nome] = produtos_vendidos.get(nome, 0) + quantidade
 
-            lucro = item["lucro"]
+            prod = Produto.query.filter_by(usuario_id=id_logado, nome=nome).first()
+            if prod and prod.custo and prod.custo > 0:
+                lucro_unitario = preco_venda_item - prod.custo
+                lucro_total_item = lucro_unitario * quantidade
+            else:
+                lucro_total_item = 0.0
 
-            produtos_vendidos[nome] = (
-                produtos_vendidos.get(nome, 0)
-                + quantidade
-            )
+            produtos_lucro[nome] = produtos_lucro.get(nome, 0) + lucro_total_item
 
-            produtos_lucro[nome] = (
-                produtos_lucro.get(nome, 0)
-                + lucro
-            )
+    top_vendidos = sorted(produtos_vendidos.items(), key=lambda x: x[1], reverse=True)[:10]
+    top_lucro = sorted(produtos_lucro.items(), key=lambda x: x[1], reverse=True)[:10]
 
-    top_vendidos = sorted(
-        produtos_vendidos.items(),
-        key=lambda x: x[1],
-        reverse=True
-    )[:10]
+    nomes_vendidos = [item[0] for item in top_vendidos]
+    quantidades_vendidas = [item[1] for item in top_vendidos]
 
-    top_lucro = sorted(
-        produtos_lucro.items(),
-        key=lambda x: x[1],
-        reverse=True
-    )[:10]
-
-    nomes_vendidos = [
-        item[0]
-        for item in top_vendidos
-    ]
-
-    quantidades_vendidas = [
-        item[1]
-        for item in top_vendidos
-    ]
-
-    nomes_lucro = [
-        item[0]
-        for item in top_lucro
-    ]
-
-    valores_lucro = [
-        item[1]
-        for item in top_lucro
-    ]
+    nomes_lucro = [item[0] for item in top_lucro]
+    valores_lucro = [item[1] for item in top_lucro]
 
     return render_template(
         "relatorio_produtos.html",
@@ -884,291 +1111,174 @@ def relatorio_produtos():
         valores_lucro=valores_lucro
     )
 
-
-@app.route("/troca/<int:id>")
-def troca(id):
-
-    venda = None
-
-    for v in dados["vendas"]:
-
-        if v["id"] == id:
-
-            venda = v
-            break
-
-    if venda is None:
-        return redirect("/historico")
-
-    produtos_ordenados = sorted(
-        dados["produtos"],
-        key=lambda p: p["nome"].lower()
-    )
-
-    return render_template(
-        "troca.html",
-        venda=venda,
-        produtos=produtos_ordenados
-    )
-
-@app.route("/trocar-item/<int:id_venda>/<int:indice_item>")
-def trocar_item(id_venda, indice_item):
-
-    venda_encontrada = None
-
-    for venda in dados["vendas"]:
-
-        if venda["id"] == id_venda:
-
-            venda_encontrada = venda
-            break
-
-    if venda_encontrada is None:
-
-        return redirect("/historico")
-
-    item = venda_encontrada["itens"][indice_item]
-
-    produtos_ordenados = sorted(
-        dados["produtos"],
-        key=lambda p: p["nome"].lower()
-    )
-
-    return render_template(
-        "trocar_item.html",
-        venda=venda_encontrada,
-        item=item,
-        indice_item=indice_item,
-        produtos=produtos_ordenados
-    )
-
-
-@app.route(
-    "/confirmar-troca-item/<int:id_venda>/<int:indice_item>",
-    methods=["POST"]
-)
-def confirmar_troca_item(id_venda, indice_item):
-
-    venda = None
-
-    for v in dados["vendas"]:
-
-        if v["id"] == id_venda:
-
-            venda = v
-            break
-
-    if venda is None:
-
-        return redirect("/historico")
-
-    item_antigo = venda["itens"][indice_item]
-
-    id_produto = int(
-        request.form["produto"]
-    )
-
-    quantidade = int(
-        request.form["quantidade"]
-    )
-
-    produto_novo = None
-
-    for produto in dados["produtos"]:
-
-        if produto["id"] == id_produto:
-
-            produto_novo = produto
-            break
-
-    if produto_novo is None:
-
-        return redirect("/historico")
-
-    valor_antigo = item_antigo["subtotal"]
-
-    valor_novo = (
-        produto_novo["preco"]
-        * quantidade
-    )
-
-    diferenca = valor_novo - valor_antigo
-
-    novo_subtotal = max(
-        valor_antigo,
-        valor_novo
-    )
-
-    saldo_restante = 0
-
-    if valor_novo < valor_antigo:
-
-        saldo_restante = (
-            valor_antigo
-            - valor_novo
-        )
-
-    for produto in dados["produtos"]:
-
-        if produto["nome"] == item_antigo["produto"]:
-
-            produto["estoque"] += item_antigo["quantidade"]
-
-            break
-
-    if quantidade > produto_novo["estoque"]:
-
-        return f"""
-        ❌ Estoque insuficiente para:
-        {produto_novo['nome']}
-
-        Estoque atual:
-        {produto_novo['estoque']}
-        """
-
-    produto_novo["estoque"] -= quantidade
-
-    item_antigo["produto"] = (
-        produto_novo["nome"]
-    )
-
-    item_antigo["quantidade"] = quantidade
-
-    item_antigo["subtotal"] = novo_subtotal
-
-    novo_total = 0
-
-    for item in venda["itens"]:
-
-        novo_total += item["subtotal"]
-
-    venda["total"] = novo_total
-
-    venda["troca"] = True
-
-    venda["saldo_restante"] = saldo_restante
-
-    venda["data_troca"] = (
-        datetime.now().strftime("%d/%m/%Y %H:%M")
-    )
-
-    salvar_dados(dados)
-
-    return render_template(
-        "troca_sucesso.html",
-        diferenca=diferenca,
-        saldo_restante=saldo_restante
-    )
-
 @app.route("/nova-troca")
 def nova_troca():
+    id_logado = session.get("usuario_id")
+    if not id_logado:
+        return redirect("/")
 
-    dados = carregar_dados()
-
-    produtos_ordenados = sorted(
-        dados["produtos"],
-        key=lambda p: p["nome"].lower()
-    )
+    # Busca os produtos cadastrados no SQLite para este usuário logado, ordenados por nome
+    produtos_ordenados = Produto.query.filter_by(usuario_id=id_logado).order_by(Produto.nome.asc()).all()
 
     return render_template(
         "nova_troca.html",
         produtos=produtos_ordenados
     )
 
+
 @app.route("/finalizar-troca", methods=["POST"])
 def finalizar_troca():
+    id_logado = session.get("usuario_id")
+    if not id_logado:
+        return jsonify({"erro": "❌ Usuário não autenticado"}), 401
 
-    dados = carregar_dados()
+    # Verifica se o caixa está aberto no SQLite
+    caixa_atual = Caixa.query.filter_by(usuario_id=id_logado, aberto=True).first()
+    if not caixa_atual:
+        return jsonify({"erro": "❌ Abra o caixa antes de realizar ou finalizar uma troca."}), 400
 
     data = request.get_json()
-
     devolvidos = data.get("devolvidos", [])
     novos = data.get("novosProdutos", [])
-    credito = data.get("credito", 0)
-    total_compra = data.get("totalCompra", 0)
+    credito = float(data.get("credito", 0))
+    total_compra = float(data.get("totalCompra", 0))
+    abrir_mao = data.get("abrirMaoCredito", False) # True ou False vindo do checkbox
+    forma_pagamento = data.get("formaPagamento", "Troca")
+    parcelas = int(data.get("parcelas", 1))
 
-    produtos = dados["produtos"]
+    # Diferença original (Crédito - Nova Compra)
+    diferenca = credito - total_compra
+    
+    if diferenca > 0 and not abrir_mao:
+        return jsonify({"erro": "❌ Não é permitido finalizar trocas com saldo restante sem o cliente abrir mão da diferença."}), 400
 
-    # 1. DEVOLVIDOS -> volta estoque
+    # SE O CLIENTE ABRIU MÃO: A diferença que sobra para ele passa a ser ZERO (ele não leva esse crédito para casa)
+    if diferenca > 0 and abrir_mao:
+        saldo_salvar = 0.0
+    else:
+        saldo_salvar = diferenca
+
+    # 1. Devolve itens ao estoque no SQLite
     for item in devolvidos:
-        for produto in produtos:
-            if produto["id"] == item["id"]:
-                produto["estoque"] += item["quantidade"]
+        produto = Produto.query.filter_by(id=int(item["id"]), usuario_id=id_logado).first()
+        if produto:
+            produto.estoque += int(item["quantidade"])
 
-    # 2. NOVOS PRODUTOS -> sai estoque
+    # 2. Retira novos itens do estoque no SQLite
     for item in novos:
-        for produto in produtos:
-            if produto["id"] == item["id"]:
+        produto = Produto.query.filter_by(id=int(item["id"]), usuario_id=id_logado).first()
+        if produto:
+            produto.estoque -= int(item["quantidade"])
 
-                # valida estoque
-                if produto["estoque"] < item["quantidade"]:
-                    return jsonify({
-                        "erro": f"Estoque insuficiente: {produto['nome']}"
-                    }), 400
+    # 3. Entrada financeira extra no caixa se o cliente comprou MAIS do que tinha de crédito (diferença negativa)
+    valor_pago_restante = abs(diferenca) if diferenca < 0 else 0
+    if diferenca < 0:
+        caixa_atual.vendas_periodo += valor_pago_restante
 
-                produto["estoque"] -= item["quantidade"]
+    # 4. CRIAÇÃO DO HISTÓRICO DA TROCA NO BANCO
+    data_hoje = datetime.now().strftime("%d/%m/%Y %H:%M")
 
-    # 3. REGISTRO DA TROCA
-    if "trocas" not in dados:
-        dados["trocas"] = []
+    nova_troca_db = Troca(
+        usuario_id=id_logado,
+        data=data_hoje,
+        produtos_devolvidos=json.dumps(devolvidos),
+        produtos_recebidos=json.dumps(novos),
+        credito=credito,
+        total_compra=total_compra,
+        saldo_diferenca=saldo_salvar # Salva o saldo corrigido (0.0 se ele abriu mão)
+    )
+    
+    db.session.add(nova_troca_db)
+    db.session.commit()
 
-    dados["trocas"].append({
-        "devolvidos": devolvidos,
-        "novos": novos,
-        "credito": credito,
-        "total_compra": total_compra
-    })
-
-    # 4. SALVAR
-    salvar_dados(dados)
-
-    return jsonify({
-        "mensagem": "Troca finalizada com sucesso!"
-    })
+    return jsonify({"mensagem": "✅ Troca finalizada com sucesso!"})
 
 @app.route("/lucro")
+@apenas_admin
 def lucro():
+    id_logado = session.get("usuario_id")
+    if not id_logado:
+        return redirect("/")
 
     lucro_total = 0
-
     produtos_com_custo = []
-
     produtos_sem_custo = []
 
-    for produto in dados["produtos"]:
-
-        if produto["custo"] > 0:
-
-            produtos_com_custo.append(produto)
-
+    # 1. Busca todos os produtos do usuário logado no SQLite para separar com/sem custo
+    todos_produtos = Produto.query.filter_by(usuario_id=id_logado).all()
+    for produto in todos_produtos:
+        custo_val = produto.custo or 0.0
+        
+        prod_dict = {
+            "id": produto.id,
+            "nome": produto.nome,
+            "preco": produto.preco,
+            "custo": custo_val,
+            "estoque": produto.estoque
+        }
+        
+        if custo_val > 0:
+            produtos_com_custo.append(prod_dict)
         else:
+            produtos_sem_custo.append(prod_dict)
 
-            produtos_sem_custo.append(produto)
+    # 2. Busca todas as vendas do usuário no SQLite para calcular o lucro total
+    vendas_db = Venda.query.filter_by(usuario_id=id_logado).all()
+    for venda in vendas_db:
+        try:
+            itens = json.loads(venda.produtos_vendidos)
+        except:
+            itens = []
 
-    for venda in dados["vendas"]:
+        for item in itens:
+            nome_produto = item.get("produto")
+            quantidade = item.get("quantidade", 0)
+            preco_venda = item.get("preco_unitario", 0.0)
 
-        for item in venda["itens"]:
+            # Procura o produto no banco para pegar o custo cadastrado dele
+            prod_banco = Produto.query.filter_by(usuario_id=id_logado, nome=nome_produto).first()
+            preco_custo = prod_banco.custo if (prod_banco and prod_banco.custo) else 0.0
 
-            lucro_item = item.get("lucro")
-
-            if lucro_item is not None:
-
+            # 🌟 TRAVA DE SEGURANÇA: Só calcula o lucro se o produto tiver um custo cadastrado (maior que zero)
+            if preco_custo > 0:
+                lucro_item = (preco_venda - preco_custo) * quantidade
                 lucro_total += lucro_item
+            else:
+                # Se não tem custo cadastrado, o lucro desse item vira ZERO
+                lucro_total += 0
 
     return render_template(
         "lucro.html",
-        lucro_total=lucro_total,
+        lucro_total=round(lucro_total, 2),
         produtos_com_custo=produtos_com_custo,
         produtos_sem_custo=produtos_sem_custo
     )
 
 @app.route("/gestao")
+@apenas_admin
 def gestao():
+    id_logado = session.get("usuario_id")
+    if not id_logado:
+        return redirect("/")
 
-    produtos_ordenados = sorted(
-        dados["produtos"],
-        key=lambda p: p["nome"].lower()
-    )
+    from sqlalchemy import func
+    produtos_db = Produto.query.filter_by(usuario_id=id_logado).order_by(func.lower(Produto.nome)).all()
+
+    produtos_ordenados = []
+    for produto in produtos_db:
+        # Pega a propriedade correta do modelo (estoque_minimo, minimo ou estoque_min)
+        minimo_val = getattr(produto, 'estoque_minimo', None)
+        if minimo_val is None:
+            minimo_val = getattr(produto, 'minimo', 0)
+
+        produtos_ordenados.append({
+            "id": produto.id,
+            "nome": produto.nome,
+            "preco": produto.preco,
+            "custo": produto.custo or 0.0,
+            "estoque": produto.estoque,
+            "estoque_minimo": minimo_val or 0  # <--- CHAVE QUE FALTAVA
+        })
 
     return render_template(
         "gestao.html",
@@ -1178,497 +1288,232 @@ def gestao():
 
 @app.route("/estoque")
 def estoque():
+    id_logado = session.get("usuario_id")
+    if not id_logado:
+        return redirect("/")
 
-    dados = carregar_dados()
+    # Busca todos os produtos do usuário logado no SQLite
+    produtos = Produto.query.filter_by(usuario_id=id_logado).order_by(Produto.nome.asc()).all()
 
-    produtos = dados["produtos"]
-
-    return render_template(
-        "estoque.html",
-        produtos=produtos
-    )
+    return render_template("estoque.html", produtos=produtos)
 
 
 @app.route("/criar-estoque")
 def criar_estoque():
+    id_logado = session.get("usuario_id")
+    if not id_logado:
+        return redirect("/")
 
-    dados = carregar_dados()
+    # Busca todos os produtos do usuário logado no SQLite
+    produtos = Produto.query.filter_by(usuario_id=id_logado).order_by(Produto.nome.asc()).all()
 
-    produtos = dados["produtos"]
-
-    return render_template(
-        "criar_estoque.html",
-        produtos=produtos
-    )
+    return render_template("criar_estoque.html", produtos=produtos)
 
 @app.route("/salvar-estoque", methods=["POST"])
 def salvar_estoque():
+    id_logado = session.get("usuario_id")
+    if not id_logado:
+        return redirect("/")
 
-    global dados
+    try:
+        produto_id = int(request.form.get("produto"))
+        estoque = int(request.form.get("estoque"))
+        estoque_minimo = int(request.form.get("estoque_minimo") or 0)
+    except (ValueError, TypeError):
+        return "❌ Valores numéricos inválidos.", 400
 
-    dados = carregar_dados()
+    # Busca o produto do usuário logado no banco
+    produto = Produto.query.filter_by(id=produto_id, usuario_id=id_logado).first()
 
-    produto_id = int(
-        request.form["produto"]
-    )
-
-    estoque = int(
-        request.form["estoque"]
-    )
-
-    estoque_minimo = int(
-        request.form["estoque_minimo"]
-    )
-
-    for produto in dados["produtos"]:
-
-        if produto["id"] == produto_id:
-
-            produto["estoque"] = estoque
-
-            produto["estoque_minimo"] = estoque_minimo
-
-            break
-
-    salvar_dados(dados)
+    if produto:
+        produto.estoque = estoque
+        produto.estoque_minimo = estoque_minimo  # 🌟 ATIVADO! Agora salva de verdade no SQLite
+        db.session.commit()
+    else:
+        return "❌ Produto não encontrado.", 404
 
     return redirect("/estoque")
 
 @app.route("/editar-gestao/<int:id>")
-def editar_gestao(id):
+@app.route("/editar-gestao", methods=["GET"])
+def editar_gestao(id=None):
+    id_logado = session.get("usuario_id")
+    if not id_logado:
+        return redirect("/")
 
-    produto_encontrado = None
+    # Se o ID não veio pela URL (ex: /editar-gestao?id=3), tenta pegar pelo parâmetro de busca
+    if id is None:
+        id_busca = request.args.get("id")
+        if id_busca:
+            id = int(id_busca)
+        else:
+            # Caso o botão principal lá de cima "Adicionar / Atualizar Custos" tenha sido clicado sem ID
+            return redirect("/gestao")
 
-    for produto in dados["produtos"]:
+    # Busca o produto no SQLite
+    produto = Produto.query.filter_by(id=id, usuario_id=id_logado).first()
 
-        if produto["id"] == id:
+    if not produto:
+        return "❌ Produto não encontrado.", 404
 
-            produto_encontrado = produto
+    # Converte para dicionário para o template renderizar perfeitamente
+    produto_formatado = {
+        "id": produto.id,
+        "nome": produto.nome,
+        "preco": produto.preco,
+        "custo": produto.custo or 0.0,
+        "estoque": produto.estoque,
+        "estoque_minimo": produto.estoque_minimo or 0
+    }
 
-            break
-
-    return render_template(
-        "editar_gestao.html",
-        produto=produto_encontrado
-    )
+    return render_template("editar_gestao.html", produto=produto_formatado)
 
 
-@app.route(
-    "/salvar-gestao/<int:id>",
-    methods=["POST"]
-)
+@app.route("/salvar-gestao/<int:id>", methods=["POST"])
 def salvar_gestao(id):
+    id_logado = session.get("usuario_id")
+    if not id_logado:
+        return redirect("/")
 
-    global dados
+    # Busca o produto do usuário logado no banco
+    produto = Produto.query.filter_by(id=id, usuario_id=id_logado).first()
 
-    dados = carregar_dados()
+    if produto:
+        try:
+            produto.preco = float(request.form.get("preco"))
+            produto.custo = float(request.form.get("custo") or 0.0)
+            produto.estoque = int(request.form.get("estoque") or 0)
+            
+            # 🌟 ATIVADO: Agora também salva e atualiza o estoque mínimo de forma profissional!
+            produto.estoque_minimo = int(request.form.get("estoque_minimo") or 0)
+            
+        except (ValueError, TypeError):
+            return "❌ Valores numéricos inválidos.", 400
 
-    for produto in dados["produtos"]:
-
-        if produto["id"] == id:
-
-            produto["preco"] = float(
-                request.form["preco"]
-            )
-
-            produto["custo"] = float(
-                request.form["custo"]
-            )
-
-            produto["estoque"] = int(
-                request.form["estoque"]
-            )
-
-            produto["estoque_minimo"] = int(
-                request.form["estoque_minimo"]
-            )
-
-            break
-
-    salvar_dados(dados)
+        # Aplica todas as alterações de uma vez no banco de dados
+        db.session.commit()
 
     return redirect("/gestao")
 
 
+from datetime import datetime
+
+# 1. ROTA PARA EXIBIR A TELA DO CAIXA
 @app.route("/caixa")
 def caixa():
+    id_logado = session.get("usuario_id")
+    if not id_logado:
+        return redirect("/")
 
-    global dados
+    # Busca o último caixa registrado do usuário
+    ultimo_caixa = Caixa.query.filter_by(usuario_id=id_logado).order_by(Caixa.id.desc()).first()
 
-    dados = carregar_dados()
-
-    return render_template(
-        "caixa.html",
-        caixa=dados["caixa"]
-    )
-
-@app.route("/abrir-caixa", methods=["POST"])
-def abrir_caixa():
-
-    dados = carregar_dados()
-
-    valor = float(
-        request.form["valor_inicial"]
-    )
-
-    dados["caixa"] = {
-
-    "aberto": True,
-
-    "valor_inicial": valor,
-
-    "data_abertura":
-    datetime.now().strftime(
-        "%d/%m/%Y %H:%M"
-    ),
-
-    "vendas_periodo": 0
-}
-
-    salvar_dados(dados)
-
-    return redirect("/caixa")
-
-@app.route("/fechar-caixa", methods=["POST"])
-def fechar_caixa():
-
-    dados = carregar_dados()
-
-    caixa = dados["caixa"]
-
-    vendas_do_periodo = caixa["vendas_periodo"]
-
-    saldo_final = (
-        caixa["valor_inicial"]
-        +
-        vendas_do_periodo
-    )
-
-    dados["historico_caixa"].append({
-
-        "data_abertura":
-        caixa["data_abertura"],
-
-        "data_fechamento":
-        datetime.now().strftime(
-            "%d/%m/%Y %H:%M"
-        ),
-
-        "valor_inicial":
-        caixa["valor_inicial"],
-
-        "vendas":
-        vendas_do_periodo,
-
-        "saldo_final":
-        saldo_final
-    })
-
-    dados["caixa"] = {
-
-        "aberto": False,
-
-        "valor_inicial": 0,
-
-        "data_abertura": "",
-
-        "vendas_periodo": 0
-    }
-
-    if len(dados["historico_caixa"]) > 100:
-
-        dados["historico_caixa"] = (
-            dados["historico_caixa"][-100:]
-        )
-
-    salvar_dados(dados)
-
-    return redirect("/caixa")
-
-ARQUIVO = "dados.json"
-
-def carregar_dados():
-    try:
-        with open(ARQUIVO, "r", encoding="utf-8") as f:
-            return json.load(f)
-    except:
-        return {
-            "produtos": [],
-            "vendas": [],
-            "caixa": {
-                "aberto": False,
-                "valor_inicial": 0,
-                "data_abertura": ""
-            },
-            "historico_caixa": []
+    # Se o banco estiver zerado ou o último caixa já tiver data de fechamento,
+    # criamos um dicionário padrão estruturado como "fechado" para o HTML não quebrar
+    if not ultimo_caixa or ultimo_caixa.data_fechamento:
+        caixa_formatado = {
+            "aberto": False,
+            "valor_inicial": 0.0,
+            "vendas_periodo": 0.0,
+            "data_abertura": ""
+        }
+    else:
+        # Se achou um caixa sem data de fechamento, ele está aberto!
+        caixa_formatado = {
+            "aberto": True,
+            "valor_inicial": ultimo_caixa.valor_inicial,
+            "vendas_periodo": ultimo_caixa.vendas_periodo,
+            "data_abertura": ultimo_caixa.data_abertura
         }
 
+    return render_template("caixa.html", caixa=caixa_formatado)
+
+# ROTA DE ABRIR CAIXA (ADICIONADO O FLASH)
+@app.route("/abrir-caixa", methods=["POST"])
+def abrir_caixa():
+    id_logado = session.get("usuario_id")
+    if not id_logado:
+        return redirect("/")
+
+    valor = float(request.form["valor_inicial"])
+
+    novo_caixa = Caixa(
+        usuario_id=id_logado,
+        aberto=True,
+        valor_inicial=valor,
+        vendas_periodo=0.0,
+        saldo_final=0.0,
+        data_abertura=datetime.now().strftime("%d/%m/%Y %H:%M")
+    )
+
+    db.session.add(novo_caixa)
+    db.session.commit()
+
+    # 👇 ESSA LINHA TRARÁ A MENSAGEM DE ABERTURA DE VOLTA
+    flash("🔓 Caixa aberto com sucesso!", "success")
+
+    print(f"💰 CAIXA ABERTO COM R$ {valor} PARA O USUÁRIO {id_logado}")
+    return redirect("/caixa")
+
+
+# ROTA DE FECHAR CAIXA (GARANTINDO O FLASH)
+@app.route("/fechar-caixa", methods=["POST"])
+def fechar_caixa():
+    id_logado = session.get("usuario_id")
+    if not id_logado:
+        return redirect("/")
+
+    caixa_atual = Caixa.query.filter_by(usuario_id=id_logado, data_fechamento=None).order_by(Caixa.id.desc()).first()
+
+    if caixa_atual:
+        saldo_final = caixa_atual.valor_inicial + caixa_atual.vendas_periodo
+        caixa_atual.aberto = False
+        caixa_atual.saldo_final = saldo_final
+        caixa_atual.data_fechamento = datetime.now().strftime("%d/%m/%Y %H:%M")
+        
+        db.session.commit()
+        
+        # 👇 ESSA LINHA TRARÁ A MENSAGEM DE FECHAMENTO DE VOLTA
+        flash("🔒 Caixa fechado com sucesso!", "success") 
+        print(f"🔒 CAIXA FECHADO COM SUCESSO. SALDO FINAL: R$ {saldo_final}")
+
+    return redirect("/caixa")
 
-def salvar_dados(dados):
-    with open(ARQUIVO, "w", encoding="utf-8") as f:
-        json.dump(dados, f, indent=4, ensure_ascii=False)
 
-
-dados = carregar_dados()
-
-if "caixa" not in dados:
-    dados["caixa"] = {
-        "aberto": False,
-        "valor_inicial": 0,
-        "data_abertura": ""
-    }
-
-if "historico_caixa" not in dados:
-    dados["historico_caixa"] = []
-
-salvar_dados(dados)
-
-for i, venda in enumerate(dados["vendas"]):
-
-    if "id" not in venda:
-
-        venda["id"] = i + 1
-
-salvar_dados(dados)
-
-
-def cadastrar_produto():
-    nome = input("Nome do produto: ")
-
-    try:
-        preco = float(input("Preço: "))
-    except:
-        print("❌ Preço inválido")
-        return
-
-    produto = {
-        "nome": nome,
-        "preco": preco
-    }
-
-    dados["produtos"].append(produto)
-    salvar_dados(dados)
-
-    print("✅ Produto cadastrado!")
-
-
-def listar_produtos():
-    print("\n📦 Produtos:")
-
-    if not dados["produtos"]:
-        print("Nenhum produto cadastrado.")
-        return
-
-    for i, p in enumerate(dados["produtos"]):
-        print(f"{i} - {p['nome']} | R${p['preco']:.2f}")
-
-
-def registrar_venda():
-    if not dados["produtos"]:
-        print("❌ Nenhum produto cadastrado.")
-        return
-
-    listar_produtos()
-
-    try:
-        indice = int(input("Escolha o produto: "))
-        quantidade = int(input("Quantidade: "))
-    except:
-        print("❌ Valor inválido")
-        return
-
-    if indice < 0 or indice >= len(dados["produtos"]):
-        print("❌ Produto inválido")
-        return
-
-    produto = dados["produtos"][indice]
-
-    total = produto["preco"] * quantidade
-
-    venda = {
-        "produto": produto["nome"],
-        "quantidade": quantidade,
-        "total": total,
-        "data": datetime.now().strftime("%Y-%m-%d %H:%M")
-    }
-
-    dados["vendas"].append(venda)
-    salvar_dados(dados)
-
-    print(f"💰 Venda registrada! Total: R${total:.2f}")
-
-
-def total_do_dia():
-    total = sum(v["total"] for v in dados["vendas"])
-    print(f"\n📊 Total geral vendido: R${total:.2f}")
-
-
-def historico_vendas():
-    print("\n📜 Histórico de vendas:\n")
-
-    if not dados["vendas"]:
-        print("Nenhuma venda registrada.")
-        return
-
-    for v in dados["vendas"]:
-        print(
-            f"{v['data']} | "
-            f"{v['produto']} | "
-            f"Qtd: {v['quantidade']} | "
-            f"R${v['total']:.2f}"
-        )
-
-
-def produto_mais_vendido():
-    contador = {}
-
-    for v in dados["vendas"]:
-        nome = v["produto"]
-        quantidade = v["quantidade"]
-
-        if nome in contador:
-            contador[nome] += quantidade
-        else:
-            contador[nome] = quantidade
-
-    if contador:
-        mais_vendido = max(contador, key=contador.get)
-
-        print(
-            f"\n🏆 Produto mais vendido: "
-            f"{mais_vendido} "
-            f"({contador[mais_vendido]} unidades)"
-        )
-    else:
-        print("Nenhuma venda ainda.")
-
-
-def vendas_hoje():
-    hoje = datetime.now().strftime("%Y-%m-%d")
-    total = 0
-
-    print("\n📆 Vendas de hoje:\n")
-
-    encontrou = False
-
-    for v in dados["vendas"]:
-        if v["data"].startswith(hoje):
-            encontrou = True
-
-            print(
-                f"{v['data']} | "
-                f"{v['produto']} | "
-                f"Qtd: {v['quantidade']} | "
-                f"R${v['total']:.2f}"
-            )
-
-            total += v["total"]
-
-    if not encontrou:
-        print("Nenhuma venda hoje.")
-
-    print(f"\n💰 Total de hoje: R${total:.2f}")
-
-
-def vendas_mes():
-    mes_atual = datetime.now().strftime("%Y-%m")
-    total = 0
-
-    print("\n📅 Vendas do mês:\n")
-
-    encontrou = False
-
-    for v in dados["vendas"]:
-        if v["data"].startswith(mes_atual):
-            encontrou = True
-
-            print(
-                f"{v['data']} | "
-                f"{v['produto']} | "
-                f"Qtd: {v['quantidade']} | "
-                f"R${v['total']:.2f}"
-            )
-
-            total += v["total"]
-
-    if not encontrou:
-        print("Nenhuma venda este mês.")
-
-    print(f"\n💰 Total do mês: R${total:.2f}")
-
-
-def remover_produto():
-    listar_produtos()
-
-    if not dados["produtos"]:
-        return
-
-    try:
-        indice = int(input("Digite o índice do produto: "))
-    except:
-        print("❌ Valor inválido")
-        return
-
-    if indice < 0 or indice >= len(dados["produtos"]):
-        print("❌ Produto inválido")
-        return
-
-    removido = dados["produtos"].pop(indice)
-
-    salvar_dados(dados)
-
-    print(f"🗑️ Produto removido: {removido['nome']}")
-
-
-def menu():
-    while True:
-        print("\n===== MENU =====")
-        print("1 - Cadastrar produto")
-        print("2 - Listar produtos")
-        print("3 - Registrar venda")
-        print("4 - Total geral")
-        print("5 - Histórico de vendas")
-        print("6 - Produto mais vendido")
-        print("7 - Vendas de hoje")
-        print("8 - Vendas do mês")
-        print("9 - Remover produto")
-        print("0 - Sair")
-
-        opcao = input("Escolha: ")
-
-        if opcao == "1":
-            cadastrar_produto()
-
-        elif opcao == "2":
-            listar_produtos()
-
-        elif opcao == "3":
-            registrar_venda()
-
-        elif opcao == "4":
-            total_do_dia()
-
-        elif opcao == "5":
-            historico_vendas()
-
-        elif opcao == "6":
-            produto_mais_vendido()
-
-        elif opcao == "7":
-            vendas_hoje()
-
-        elif opcao == "8":
-            vendas_mes()
-
-        elif opcao == "9":
-            remover_produto()
-
-        elif opcao == "0":
-            print("👋 Encerrando sistema...")
-            break
-
-        else:
-            print("❌ Opção inválida")
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    # Criador automático de Admin
+    with app.app_context():
+
+        #"Se as tabelas não existirem no arquivo .db, crie-as agora!"
+        db.create_all()
+
+        from werkzeug.security import generate_password_hash
+        from datetime import datetime, timedelta
+        
+        # ⚠️ SUBSTITUA COM OS SEUS DADOS REAIS ABAIXO:
+        seu_email_real = "igordesouzacordeiro18@gmail.com"
+        sua_senha_real = "123123"
+        
+        # Se o admin antigo com erro estiver lá, removemos ele
+        admin_antigo = Usuario.query.filter_by(email="admin@teste.com").first()
+        if admin_antigo:
+            db.session.delete(admin_antigo)
+            db.session.commit()
+        
+        # Cria a sua conta real se ela não existir no banco novo
+        if not Usuario.query.filter_by(email=seu_email_real).first():
+            admin = Usuario(
+                email=seu_email_real, 
+                senha=generate_password_hash(sua_senha_real), 
+                primeiro_acesso=False, # Admin entra direto sem travar
+                status="ativo",
+                validade_plano=datetime.now() + timedelta(days=365) # Plano ativo por 1 ano
+            )
+            db.session.add(admin)
+            db.session.commit()
+            print(f"🚀 SEU USUÁRIO FOI CRIADO COM SUCESSO: {seu_email_real}")
+
+    # 🌐 ATUALIZADO: Aceita conexões de outros aparelhos na mesma rede Wi-Fi
+    app.run(host='0.0.0.0', port=5000, debug=True)
+

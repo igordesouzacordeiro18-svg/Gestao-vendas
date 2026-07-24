@@ -1,0 +1,42 @@
+<div class="sidebar">
+    <h2>🛍️ Loja</h2>
+
+    <ul>
+        <li><a href="/dashboard">📊 Início</a></li>
+        <li><a href="/produtos">📦 Produtos</a></li>
+        <li><a href="/nova-venda">💰 Nova venda</a></li>
+        <li><a href="/nova-troca">🔁 Troca</a></li>
+        <li><a href="/historico">🧾 Histórico</a></li>
+        <li><a href="/caixa">💵 Caixa</a></li>
+
+        <!-- ABAS RESTRITAS (EXCLUSIVAS PARA ADMIN) -->
+        <li>
+            {% if session.get('cargo') == 'admin' %}
+                <a href="/lucro">📈 Lucro</a>
+            {% else %}
+                <a class="disabled-link" title="Apenas Gerentes">📈 Lucro 🔒</a>
+            {% endif %}
+        </li>
+
+        <!-- RELATÓRIOS (LIBERADO PARA TODOS) -->
+        <li>
+            <a href="/relatorios">📊 Relatórios</a>
+        </li>
+
+        <li>
+            {% if session.get('cargo') == 'admin' %}
+                <a href="/estoque">📦 Estoque</a>
+            {% else %}
+                <a class="disabled-link" title="Apenas Gerentes">📦 Estoque 🔒</a>
+            {% endif %}
+        </li>
+
+        <li>
+            {% if session.get('cargo') == 'admin' %}
+                <a href="/gestao">⚙️ Gestão</a>
+            {% else %}
+                <a class="disabled-link" title="Apenas Gerentes">⚙️ Gestão 🔒</a>
+            {% endif %}
+        </li>
+    </ul>
+</div>

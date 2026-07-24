@@ -17,71 +17,7 @@
 
 <div class="layout">
 
-    <!-- SIDEBAR -->
-
-    <div class="sidebar">
-
-        <h2>🛍️ Loja</h2>
-
-        <ul>
-
-            <li>
-                <a href="/dashboard">
-                    📊 Início
-                </a>
-            </li>
-
-            <li>
-                <a href="/produtos">
-                    📦 Produtos
-                </a>
-            </li>
-
-            <li>
-                <a href="/nova-venda">
-                    💰 Nova venda
-                </a>
-            </li>
-
-            <li>
-                <a href="/historico">
-                    🧾 Histórico
-                </a>
-            </li>
-
-            <li>
-                <a href="/caixa">
-                    💵 Caixa
-                </a>
-            </li>
-
-            <li>
-                <a href="/lucro">
-                    📈 Lucro
-                </a>
-            </li>
-
-            <li>
-                <a href="/relatorios">
-                    📊 Relatórios
-                </a>
-            </li>
-
-            <li>
-                <a href="/estoque">
-                    📦 Estoque
-                </a>
-            </li>
-
-            <li>
-                <a href="/gestao">
-                    ⚙️ Gestão
-                </a>
-            </li>
-
-        </ul>
-
-    </div>
+    {% include 'sidebar.html' %}
 
     <!-- MAIN -->
 
@@ -101,13 +37,18 @@
 
             </div>
 
-            <a href="/novo-produto">
-
-                <button>
-                    ➕ Novo Produto
+            <!-- TRAVA NO BOTÃO DE NOVO PRODUTO -->
+            {% if session.get('cargo') == 'admin' %}
+                <a href="/novo-produto">
+                    <button>
+                        ➕ Novo Produto
+                    </button>
+                </a>
+            {% else %}
+                <button disabled title="Apenas Gerentes">
+                    ➕ Novo Produto 🔒
                 </button>
-
-            </a>
+            {% endif %}
 
         </div>
 
@@ -178,19 +119,22 @@
 
                 </span>
 
+                <!-- TRAVA NAS AÇÕES DE EDITAR E EXCLUIR -->
                 <span class="acoes-tabela">
 
-                    <a href="/editar-produto/{{ produto.id }}">
-                        ✏️
-                    </a>
+                    {% if session.get('cargo') == 'admin' %}
+                        <a href="/editar-produto/{{ produto.id }}">
+                            ✏️
+                        </a>
 
-                    <a
-                    href="/excluir-produto/{{ produto.id }}"
-                    onclick="return confirm('Tem certeza que deseja excluir este produto?')">
-
-                        🗑
-
-                    </a>
+                        <a
+                        href="/excluir-produto/{{ produto.id }}"
+                        onclick="return confirm('Tem certeza que deseja excluir este produto?')">
+                            🗑
+                        </a>
+                    {% else %}
+                        <span title="Apenas Gerentes">🔒</span>
+                    {% endif %}
 
                 </span>
 
@@ -235,6 +179,7 @@ pesquisa.addEventListener("input", () => {
 
 </script>
 
+<script src="{{ url_for('static', filename='sidebar.js') }}"></script>
+
 </body>
 </html>
-

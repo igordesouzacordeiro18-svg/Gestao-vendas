@@ -18,25 +18,7 @@
 
 <div class="layout">
 
-    <div class="sidebar">
-
-        <h2>🛍️ Loja</h2>
-
-        <ul>
-
-            <li><a href="/dashboard">📊 Início</a></li>
-            <li><a href="/produtos">📦 Produtos</a></li>
-            <li><a href="/nova-venda">💰 Nova venda</a></li>
-            <li><a href="/historico">🧾 Histórico</a></li>
-            <li><a href="/caixa">💵 Caixa</a></li>
-            <li><a href="/lucro">📈 Lucro</a></li>
-            <li><a href="/relatorios">📊 Relatórios</a></li>
-            <li><a href="/estoque">📦 Estoque</a></li>
-            <li><a href="/gestao">⚙️ Gestão</a></li>
-
-        </ul>
-
-    </div>
+    {% include 'sidebar.html' %}
 
     <div class="main">
 
@@ -66,7 +48,7 @@
 
             </tr>
 
-            {% for caixa in historico_caixa|reverse %}
+            {% for caixa in historico_caixa %}
 
             <tr>
 
@@ -74,16 +56,24 @@
 
                 <td>{{ caixa.data_fechamento }}</td>
 
-                <td>R$ {{ caixa.valor_inicial }}</td>
+                <td>R$ {{ "%.2f"|format(caixa.valor_inicial) }}</td>
 
-                <td>R$ {{ caixa.vendas }}</td>
+                <td>R$ {{ "%.2f"|format(caixa.vendas) }}</td>
 
                 <td>
                     <strong>
-                        R$ {{ caixa.saldo_final }}
+                        R$ {{ "%.2f"|format(caixa.saldo_final) }}
                     </strong>
                 </td>
 
+            </tr>
+
+            {% else %}
+
+            <tr>
+                <td colspan="5" style="text-align: center; color: #64748b; padding: 20px;">
+                    Nenhum registro de caixa encontrado.
+                </td>
             </tr>
 
             {% endfor %}
@@ -94,5 +84,6 @@
 
 </div>
 
+<script src="{{ url_for('static', filename='sidebar.js') }}"></script>
 </body>
 </html>

@@ -1,80 +1,206 @@
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
-
     <meta charset="UTF-8">
-
-    <meta name="viewport"
-    content="width=device-width, initial-scale=1.0">
-
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Nova Venda</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 
-    <link rel="stylesheet"
-    href="{{ url_for('static', filename='style.css') }}">
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
 
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    
+    <style>
+        /* Estilos rápidos para deixar a área de troco impecável e intuitiva */
+        .grupo-troco {
+            background-color: #fcfcfc;
+            border: 1px dashed #ccc;
+            padding: 15px;
+            border-radius: 6px;
+            margin-top: 15px;
+        }
+        .grupo-troco label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: #333;
+        }
+        .grupo-troco input {
+            width: 100%;
+            padding: 8px;
+            font-size: 16px;
+            border: 1px solid #bbb;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        .btn-nota {
+            padding: 6px 12px;
+            border: 1px solid #2b3e50;
+            background-color: #fff;
+            color: #2b3e50;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.2s;
+        }
+        .btn-nota:hover {
+            background-color: #2b3e50;
+            color: #fff;
+        }
+        #box-troco {
+            margin-top: 15px;
+            padding: 15px;
+            border-radius: 5px;
+            font-weight: bold;
+            font-size: 20px;
+            text-align: center;
+            transition: all 0.3s ease;
+            background-color: #f8fafc; /* Um fundo bem sutil para o box de troco */
+        }
+
+        /* ========================================================
+           ESTILIZAÇÃO PROFISSIONAL DO SELECT2
+           ======================================================== */
+
+        /* Alinha a caixa principal do Select2 */
+        .select2-container--default .select2-selection--single {
+            background-color: #fff;
+            border: 1px solid #bbb;
+            border-radius: 4px;
+            height: 42px; /* Mesma altura do campo de quantidade */
+            display: flex;
+            align-items: center;
+            transition: border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+        }
+
+        /* Efeito de foco quando clica no campo (Combina com a cor azul dos botões) */
+        .select2-container--default.select2-container--focus .select2-selection--single {
+            border-color: #2563eb;
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+            outline: none;
+        }
+
+        /* Ajusta o texto de dentro do campo */
+        .select2-container--default .select2-selection--single .select2-selection__rendered {
+            color: #333;
+            padding-left: 12px;
+            font-size: 16px;
+            line-height: 42px;
+        }
+
+        /* Ajusta a setinha para baixo no canto direito */
+        .select2-container--default .select2-selection--single .select2-selection__arrow {
+            height: 40px;
+            right: 10px;
+        }
+
+        /* Corrige o botão azul de limpar (o "x") jogando ele para o canto certo */
+        .select2-container--default .select2-selection--single .select2-selection__clear {
+            cursor: pointer;
+            float: none;
+            position: absolute;
+            right: 35px;
+            font-weight: bold;
+            color: #999;
+            font-size: 18px;
+            margin-right: 0;
+            line-height: 42px;
+            background: none !important; /* Remove o fundo azul esticado */
+            width: auto !important;
+            height: auto !important;
+        }
+
+        .select2-container--default .select2-selection--single .select2-selection__clear:hover {
+            color: #ef4444; /* Fica vermelho ao passar o mouse */
+        }
+
+        /* Estiliza a caixinha que abre com a lista de produtos */
+        .select2-dropdown {
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            z-index: 9999;
+        }
+
+        /* Barra de pesquisa de dentro do dropdown */
+        .select2-container--default .select2-search--dropdown .select2-search__field {
+            border: 1px solid #cbd5e1;
+            border-radius: 4px;
+            padding: 8px 12px;
+            outline: none;
+        }
+
+        /* Item da lista quando passa o mouse por cima (Hover) */
+        .select2-container--default .select2-results__option--highlighted[aria-selected] {
+            background-color: #2563eb !important; /* Tom azul profissional */
+            color: white !important;
+        }
+
+        /* Espaçamento das opções na lista */
+        .select2-results__option {
+            padding: 10px 12px;
+            font-size: 15px;
+        }
+
+        /* Banner de Alerta Superior */
+.alerta-caixa-fechado {
+    background-color: #fef2f2;
+    border: 1px solid #fca5a5;
+    border-radius: 6px;
+    padding: 15px 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+}
+
+.alerta-conteudo {
+    color: #b91c1c;
+    font-size: 15px;
+    display: flex;
+    align-items: center;
+}
+
+/* Estado de Bloqueio para o Formulário */
+.caixa-bloqueado {
+    opacity: 0.6;
+    pointer-events: none; /* Desativa cliques, seleção de texto e digitação em tudo */
+    cursor: not-allowed;
+}
+    </style>
 </head>
-
 <body>
 
 <div class="layout">
 
-    <!-- SIDEBAR (igual dashboard) -->
-    <div class="sidebar">
+    {% include 'sidebar.html' %}
 
-        <h2>🛍️ Loja</h2>
-
-        <ul>
-
-            <li><a href="/dashboard">📊 Início</a></li>
-            <li><a href="/produtos">📦 Produtos</a></li>
-            <li><a href="/nova-venda">💰 Nova venda</a></li>
-            <li><a href="/historico">🧾 Histórico</a></li>
-            <li><a href="/caixa">💵 Caixa</a></li>
-            <li><a href="/lucro">📈 Lucro</a></li>
-            <li><a href="/relatorios">📊 Relatórios</a></li>
-            <li><a href="/estoque">📦 Estoque</a></li>
-            <li><a href="/gestao">⚙️ Gestão</a></li>
-
-        </ul>
-
-    </div>
-
-    <!-- CONTEÚDO PRINCIPAL -->
     <div class="main">
 
         <h1>💰 Nova Venda</h1>
 
+        {% if not caixa_aberto %}
+        <div class="alerta-caixa-fechado">
+            <div class="alerta-conteudo">
+                <span>⚠️ <strong>Atenção Operador:</strong> O caixa deste turno encontra-se fechado. Abra o caixa no menu lateral antes de iniciar as vendas.</span>
+            </div>
+        </div>
+        {% endif %}
+
         <div class="box-venda">
-
             <select id="produto">
-
                 {% for produto in produtos %}
-
                     <option value="{{ produto.preco }}">
                         {{ produto.nome }} - R$ {{ produto.preco }}
                     </option>
-
                 {% endfor %}
-
             </select>
 
-            <input
-                type="number"
-                id="quantidade"
-                placeholder="Quantidade"
-                value="1">
-
-            <button onclick="adicionarProduto()">
-                ➕ Adicionar
-            </button>
-
+            <input type="number" id="quantidade" placeholder="Quantidade" value="1">
+            <button onclick="adicionarProduto()">➕ Adicionar</button>
         </div>
 
-        <form
-        id="form-venda"
-        action="/salvar-venda"
-        method="POST"
-        onsubmit="return finalizarVenda(event)">
+        <form id="form-venda" action="/salvar-venda" method="POST">
 
             <div class="carrinho">
 
@@ -82,108 +208,79 @@
 
                 <div id="lista-carrinho"></div>
 
-                <input
-                    type="hidden"
-                    name="carrinho"
-                    id="carrinho-input">
+                <input type="hidden" name="carrinho" id="carrinho-input">
 
                 <h3>💳 Pagamento</h3>
 
-                <div
-                    id="primeiro-pagamento-completo"
-                    style="
-                        display:flex;
-                        gap:10px;
-                        margin-top:10px;
-                        align-items:center;
-                    ">
+                <div style="display: flex; flex-direction: column; gap: 5px; margin-top: 10px;">
+                    <div id="primeiro-pagamento-completo" style="display:flex; gap:10px; align-items:center;">
+                        <select id="pagamento1" name="pagamento1" onchange="verificarMeioPagamento()" required>
+                            <option value="">Selecione</option>
+                            <option value="Pix">Pix</option>
+                            <option value="Dinheiro">Dinheiro</option>
+                            <option value="Débito">Débito</option>
+                            <option value="Crédito">Crédito</option>
+                        </select>
 
-                    <select id="pagamento1" name="pagamento1" required>
+                        <input type="number" step="0.01" id="valor1" name="valor1" placeholder="Valor da primeira forma" style="display:none;" oninput="calcularTroco()">
+                    </div>
 
-                        <option value="">Selecione</option>
-
-                        <option value="Pix">Pix</option>
-                        <option value="Dinheiro">Dinheiro</option>
-                        <option value="Débito">Débito</option>
-
-                        <option value="Crédito 1x">Crédito 1x</option>
-                        <option value="Crédito 2x">Crédito 2x</option>
-                        <option value="Crédito 3x">Crédito 3x</option>
-                        <option value="Crédito 4x">Crédito 4x</option>
-                        <option value="Crédito 5x">Crédito 5x</option>
-                        <option value="Crédito 6x">Crédito 6x</option>
-                        <option value="Crédito 7x">Crédito 7x</option>
-                        <option value="Crédito 8x">Crédito 8x</option>
-                        <option value="Crédito 9x">Crédito 9x</option>
-                        <option value="Crédito 10x">Crédito 10x</option>
-                        <option value="Crédito 11x">Crédito 11x</option>
-                        <option value="Crédito 12x">Crédito 12x</option>
-
-                    </select>
-
-                    <input
-                        type="number"
-                        step="0.01"
-                        id="valor1"
-                        name="valor1"
-                        placeholder="Valor da primeira forma"
-                        style="display:none;">
-
+                    <div id="campo-parcelas1" style="display: none; align-items: center; gap: 10px; margin-left: 5px;">
+                        <small style="color: #666;">Parcelas:</small>
+                        <select id="parcelas1" name="parcelas1" style="padding: 4px; width: auto;">
+                            {% for i in range(1, 13) %}
+                                <option value="{{ i }}">{{ i }}x</option>
+                            {% endfor %}
+                        </select>
+                    </div>
                 </div>
 
-                <button
-                    type="button"
-                    id="btn-segundo-pagamento"
-                    onclick="mostrarSegundoPagamento()">
-
+                <button type="button" id="btn-segundo-pagamento" onclick="mostrarSegundoPagamento()" style="margin-top: 15px;">
                     ➕ Adicionar segunda forma
-
                 </button>
 
-                <div
-                    id="segundo-pagamento"
-                    style="
-                    display:none;
-                    gap:10px;
-                    margin-top:10px;
-                    align-items:center;
-                    ">
+                <div style="display: flex; flex-direction: column; gap: 5px;">
+                    <div id="segundo-pagamento" style="display:none; gap:10px; margin-top:10px; align-items:center;">
+                        <select id="pagamento2" name="pagamento2" onchange="verificarMeioPagamento()">
+                            <option value="">Selecione</option>
+                            <option value="Pix">Pix</option>
+                            <option value="Dinheiro">Dinheiro</option>
+                            <option value="Débito">Débito</option>
+                            <option value="Crédito">Crédito</option>
+                        </select>
 
-                    <select id="pagamento2" name="pagamento2">
+                        <input type="number" step="0.01" id="valor2" name="valor2" placeholder="Valor da segunda forma" oninput="calcularTroco()">
+                    </div>
 
-                        <option value="">Selecione</option>
-
-                        <option value="Pix">Pix</option>
-                        <option value="Dinheiro">Dinheiro</option>
-                        <option value="Débito">Débito</option>
-
-                        <option value="Crédito 1x">Crédito 1x</option>
-                        <option value="Crédito 2x">Crédito 2x</option>
-                        <option value="Crédito 3x">Crédito 3x</option>
-                        <option value="Crédito 4x">Crédito 4x</option>
-                        <option value="Crédito 5x">Crédito 5x</option>
-                        <option value="Crédito 6x">Crédito 6x</option>
-                        <option value="Crédito 7x">Crédito 7x</option>
-                        <option value="Crédito 8x">Crédito 8x</option>
-                        <option value="Crédito 9x">Crédito 9x</option>
-                        <option value="Crédito 10x">Crédito 10x</option>
-                        <option value="Crédito 11x">Crédito 11x</option>
-                        <option value="Crédito 12x">Crédito 12x</option>
-
-                    </select>
-
-                    <input
-                        type="number"
-                        step="0.01"
-                        id="valor2"
-                        name="valor2"
-                        placeholder="Valor da segunda forma">
-
+                    <div id="campo-parcelas2" style="display: none; align-items: center; gap: 10px; margin-left: 5px;">
+                        <small style="color: #666;">Parcelas:</small>
+                        <select id="parcelas2" name="parcelas2" style="padding: 4px; width: auto;">
+                            {% for i in range(1, 13) %}
+                                <option value="{{ i }}">{{ i }}x</option>
+                            {% endfor %}
+                        </select>
+                    </div>
                 </div>
 
-                <h2 id="total">Total: R$ 0</h2>
+                <div class="grupo-troco" id="campo-dinheiro-real" style="display: none; margin-top: 15px;">
+                    <label for="valor_pago">💵 Valor Entregue em Dinheiro pelo Cliente:</label>
+                    <input type="number" id="valor_pago" step="0.01" placeholder="Digite quanto o cliente entregou..." oninput="calcularTroco()">
+                    
+                    <div class="notas-atalho" style="margin-top: 8px; display: flex; gap: 6px; flex-wrap: wrap;">
+                        <button type="button" class="btn-nota" onclick="definirValorPago(20)">R$ 20</button>
+                        <button type="button" class="btn-nota" onclick="definirValorPago(50)">R$ 50</button>
+                        <button type="button" class="btn-nota" onclick="definirValorPago(100)">R$ 100</button>
+                        <button type="button" class="btn-nota" onclick="definirValorPago(200)">R$ 200</button>
+                    </div>
+                </div>
 
-                <button type="submit" id="btn-finalizar" disabled>
+                <div id="box-troco" style="display: none; margin-top: 10px;">
+                    <strong style="color: #2e7d32;">💰 Troco: R$ <span id="valor-troco">0.00</span></strong>
+                </div>
+
+                <h2 id="total" style="margin-top: 20px;">Total: R$ 0</h2>
+
+                <button type="submit" id="btn-finalizar">
                     ✅ Finalizar Venda
                 </button>
 
@@ -195,53 +292,154 @@
 
 </div>
 
-<!-- POPUP SUCESSO -->
-
-<div id="popup-sucesso" class="popup-sucesso">
-
-    <div class="popup-box">
-
-        <div class="check">
-            ✅
-        </div>
-
-        <h2>
-            Venda concluída!
-        </h2>
-
-        <p>
-            Salvando venda no sistema...
-        </p>
-
-    </div>
-
-</div>
-
+<div id="toast-sucesso" class="toast">🎉 Venda concluída com sucesso!</div>
 <script>
 
-const caixaAberto = {{ caixa_aberto|tojson }};
+const caixaAberto = {{ 'true' if caixa_aberto else 'false' }};
 
-</script>
-
-<script>
+$(document).ready(function() {
+    // Transforma o select comum de produtos em um campo com busca inteligente
+    $('#produto').select2({
+        placeholder: "🔍 Digite o nome do produto...",
+        allowClear: true,
+        width: '100%' // Garante que ele vai ocupar o espaço certinho na tela
+    });
+});
 
 let total = 0;
 let carrinho = [];
 
-function adicionarProduto(){
+// Monitora se o meio de pagamento mudou para ativar/esconder o campo de troco
+function verificarMeioPagamento() {
+    const p1 = document.getElementById("pagamento1").value;
+    const p2 = document.getElementById("pagamento2").value;
+    const divSegundo = document.getElementById("segundo-pagamento").style.display;
+    
+    const campoTroco = document.getElementById("campo-dinheiro-real");
+    const boxTroco = document.getElementById("box-troco");
+    
+    // Elementos das parcelas
+    const campoParcelas1 = document.getElementById("campo-parcelas1");
+    const campoParcelas2 = document.getElementById("campo-parcelas2");
 
+    // LÓGICA DO CRÉDITO DINÂMICO
+    if (p1 === "Crédito") {
+        campoParcelas1.style.display = "block";
+    } else {
+        campoParcelas1.style.display = "none";
+        document.getElementById("parcelas1").value = "1"; // reseta para 1x
+    }
+
+    if (divSegundo === "flex" && p2 === "Crédito") {
+        campoParcelas2.style.display = "block";
+    } else {
+        campoParcelas2.style.display = "none";
+        if(document.getElementById("parcelas2")) {
+            document.getElementById("parcelas2").value = "1";
+        }
+    }
+
+    // LÓGICA DO DINHEIRO/TROCO
+    if (p1 === "Dinheiro" || (divSegundo === "flex" && p2 === "Dinheiro")) {
+        campoTroco.style.display = "block";
+        boxTroco.style.display = "block";
+        calcularTroco();
+    } else {
+        campoTroco.style.display = "none";
+        boxTroco.style.display = "none";
+        document.getElementById("valor_pago").value = "";
+    }
+}
+
+// Vincula o monitoramento nos selects de pagamento assim que a página carrega
+window.addEventListener("DOMContentLoaded", () => {
+    document.getElementById("pagamento1").addEventListener("change", verificarMeioPagamento);
+    document.getElementById("pagamento2").addEventListener("change", verificarMeioPagamento);
+});
+
+// Define o valor clicado nos botões rápidos
+function definirValorPago(valorNota) {
+    document.getElementById("valor_pago").value = valorNota;
+    calcularTroco();
+}
+
+// Calcula o troco de forma dinâmica e altera a cor do box
+function calcularTroco() {
+    const p1 = document.getElementById("pagamento1").value;
+    const p2 = document.getElementById("pagamento2").value;
+    const divSegundo = document.getElementById("segundo-pagamento").style.display;
+
+    const valorEntregue = parseFloat(document.getElementById("valor_pago").value) || 0;
+    const boxTroco = document.getElementById("box-troco");
+    let valorDestinadoAoDinheiro = 0;
+
+    if (divSegundo === "flex") {
+        if (p1 === "Dinheiro") {
+            valorDestinadoAoDinheiro = parseFloat(document.getElementById("valor1").value) || 0;
+        } else if (p2 === "Dinheiro") {
+            valorDestinadoAoDinheiro = parseFloat(document.getElementById("valor2").value) || 0;
+        }
+    } else {
+        valorDestinadoAoDinheiro = total; 
+    }
+
+    if (document.getElementById("valor_pago").value === "") {
+        boxTroco.innerHTML = `<strong style="color: #2e7d32;">💰 Troco: R$ 0.00</strong>`;
+        return;
+    }
+
+    const diferenca = valorEntregue - valorDestinadoAoDinheiro; 
+    if (diferenca >= 0) {
+        boxTroco.innerHTML = `<strong style="color: #2e7d32;">💰 Troco: R$ ${diferenca.toFixed(2)}</strong>`;
+    } else {
+        const falta = Math.abs(diferenca);
+        boxTroco.innerHTML = `<strong style="color: #d32f2f;">⚠️ Valor insuficiente! Faltam R$ ${falta.toFixed(2)}</strong>`;
+    }
+}
+
+function atualizarCarrinho(){
+    const lista = document.getElementById("lista-carrinho");
+    lista.innerHTML = "";
+    total = 0;
+
+    carrinho.forEach((produto, index) => {
+        total += produto.subtotal;
+
+        const item = document.createElement("div");
+        item.classList.add("item-carrinho");
+        item.innerHTML = `
+            <span>${produto.nome}</span>
+            <span>${produto.quantidade}x</span>
+            <strong>R$ ${produto.subtotal.toFixed(2)}</strong>
+            <button onclick="removerItem(${index})">❌</button>
+        `;
+        lista.appendChild(item);
+    });
+
+    const totalElement = document.getElementById("total");
+    if(totalElement) {
+        totalElement.innerText = `Total: R$ ${total.toFixed(2)}`;
+    }
+    
+    document.getElementById("carrinho-input").value = JSON.stringify(carrinho);
+    
+    if (typeof calcularTroco === "function") {
+        calcularTroco();
+    }
+}
+
+function adicionarProduto(){
     const produto = document.getElementById("produto");
+    
+    if (!produto.value || produto.value === "") {
+        alert("⚠️ Por favor, selecione um produto válido antes de adicionar.");
+        return;
+    }
 
     const nome = produto.options[produto.selectedIndex].text;
     const preco = parseFloat(produto.value);
-
-    const quantidade = parseInt(
-        document.getElementById("quantidade").value
-    );
-
+    const quantidade = parseInt(document.getElementById("quantidade").value) || 1;
     const subtotal = preco * quantidade;
-
-    total += subtotal;
 
     carrinho.push({
         nome,
@@ -252,6 +450,8 @@ function adicionarProduto(){
 
     atualizarCarrinho();
 
+    $('#produto').val('').trigger('change');
+    document.getElementById("quantidade").value = "1";
 }
 
 function removerItem(indice){
@@ -259,209 +459,129 @@ function removerItem(indice){
     atualizarCarrinho();
 }
 
-function atualizarCarrinho(){
-
-    const lista = document.getElementById("lista-carrinho");
-    lista.innerHTML = "";
-
-    total = 0;
-
-    carrinho.forEach((produto, index) => {
-
-        total += produto.subtotal;
-
-        const item = document.createElement("div");
-        item.classList.add("item-carrinho");
-
-        item.innerHTML = `
-            <span>${produto.nome}</span>
-            <span>${produto.quantidade}x</span>
-            <strong>R$ ${produto.subtotal.toFixed(2)}</strong>
-
-            <button onclick="removerItem(${index})">
-                ❌
-            </button>
-        `;
-
-        lista.appendChild(item);
-
-    });
-
-    document.getElementById("total").innerText =
-        `Total: R$ ${total.toFixed(2)}`;
-
-    document.getElementById("carrinho-input").value =
-        JSON.stringify(carrinho);
-
-    document.getElementById("btn-finalizar").disabled =
-        carrinho.length === 0;
-
-}
-
-
-function finalizarVenda(event){
-
-    event.preventDefault();
-
-    if(!caixaAberto){
-
-        alert(
-            "❌ Abra o caixa antes de realizar uma venda."
-        );
-
-        return false;
-    }
-
-    if(carrinho.length === 0){
-
-        alert("Adicione um produto!");
-
-        return false;
-    }
-
-    const segundoPagamento =
-    document.getElementById("segundo-pagamento");
-
-    if(segundoPagamento.style.display === "flex"){
-
-        const valor1 =
-        parseFloat(
-            document.getElementById("valor1").value || 0
-        );
-
-        const valor2 =
-        parseFloat(
-            document.getElementById("valor2").value || 0
-        );
-
-        const soma =
-        valor1 + valor2;
-
-        if(soma > total){
-
-            alert(
-                `Sobrou R$ ${(soma - total).toFixed(2)}`
-            );
-
-            return false;
-        }
-
-        if(soma < total){
-
-            alert(
-                `Falta R$ ${(total - soma).toFixed(2)}`
-            );
-
-            return false;
-        }
-
-    }
-
-    const botao =
-    document.getElementById("btn-finalizar");
-
-    botao.disabled = true;
-
-    botao.innerText = "⏳ Processando...";
-
-    document
-    .getElementById("popup-sucesso")
-    .classList.add("mostrar-popup");
-
-    setTimeout(() => {
-
-        document
-        .getElementById("form-venda")
-        .submit();
-
-    }, 1600);
-
-    return false;
-}
-
 function mostrarSegundoPagamento(){
+    document.getElementById("segundo-pagamento").style.display = "flex";
+    document.getElementById("valor1").style.display = "block";
+    
+    document.getElementById("valor1").addEventListener("input", calcularTroco);
+    document.getElementById("valor2").addEventListener("input", calcularTroco);
 
-    document
-    .getElementById("segundo-pagamento")
-    .style.display = "flex";
-
-    document
-    .getElementById("valor1")
-    .style.display = "block";
-
-    document
-    .getElementById("btn-segundo-pagamento")
-    .innerText = "➖ Remover segunda forma";
-
-    document
-    .getElementById("btn-segundo-pagamento")
-    .onclick = esconderSegundoPagamento;
+    document.getElementById("btn-segundo-pagamento").innerText = "➖ Remover segunda forma";
+    document.getElementById("btn-segundo-pagamento").onclick = esconderSegundoPagamento;
+    
+    verificarMeioPagamento();
 }
 
-function esconderSegundoPagamento(){
+function esconderSegundoPagamento(){  
+    document.getElementById("segundo-pagamento").style.display = "none";
+    document.getElementById("valor1").style.display = "none";
 
-    document
-    .getElementById("segundo-pagamento")
-    .style.display = "none";
+    document.getElementById("valor1").value = "";
+    document.getElementById("valor2").value = "";
+    document.getElementById("pagamento2").value = "";
+    
+    if(document.getElementById("campo-parcelas2")) {
+        document.getElementById("campo-parcelas2").style.display = "none";
+    }
 
-    document
-    .getElementById("valor1")
-    .style.display = "none";
-
-    document
-    .getElementById("valor1").value = "";
-
-    document
-    .getElementById("valor2").value = "";
-
-    document
-    .getElementById("pagamento2").value = "";
-
-    document
-    .getElementById("btn-segundo-pagamento")
-    .innerText = "➕ Adicionar segunda forma";
-
-    document
-    .getElementById("btn-segundo-pagamento")
-    .onclick = mostrarSegundoPagamento;
+    document.getElementById("btn-segundo-pagamento").innerText = "➕ Adicionar segunda forma";
+    document.getElementById("btn-segundo-pagamento").onclick = mostrarSegundoPagamento;
+    
+    verificarMeioPagamento();
 }
 
-document
-.getElementById("form-venda")
-.addEventListener("submit", function(e){
+// BLOCO SUBMIT ÚNICO ATUALIZADO E SEM TRAVAS OCULTAS
+document.getElementById("form-venda").addEventListener("submit", function(e){
+    // 1. Para o envio automático para fazermos os testes
+    e.preventDefault(); 
+    const form = this; 
 
-    const segundoPagamento =
-    document.getElementById("segundo-pagamento");
+    // GARANTIA: Se travar, o botão volta ao normal para você tentar de novo
+    const botao = document.getElementById("btn-finalizar");
+    if (botao) {
+        botao.disabled = false;
+        botao.innerText = "✅ Finalizar Venda";
+    }
 
-    if(segundoPagamento.style.display === "flex"){
+    // 2. Valida se o caixa está aberto
+    if(typeof caixaAberto !== 'undefined' && !caixaAberto){
+        alert("❌ Ação Bloqueada: Abra o caixa antes de realizar uma venda.");
+        return false;
+    }
 
-        const valor1 =
-        parseFloat(
-            document.getElementById("valor1").value || 0
-        );
+    // 3. Valida se o carrinho está vazio
+    if(typeof carrinho === 'undefined' || carrinho.length === 0){
+        alert("🛒 Carrinho vazio! Adicione pelo menos um produto antes de finalizar.");
+        return false; 
+    }
 
-        const valor2 =
-        parseFloat(
-            document.getElementById("valor2").value || 0
-        );
+    // 4. Valida se preencheu a forma de pagamento
+    const p1 = document.getElementById("pagamento1") ? document.getElementById("pagamento1").value : "";
+    if (p1 === "") {
+        alert("💳 Por favor, selecione uma forma de pagamento.");
+        return false;
+    }
 
+    const valorTotalVenda = parseFloat(total) || 0;
+    const segundoPagamento = document.getElementById("segundo-pagamento");
+    const estaComSegundaFormaAtiva = segundoPagamento && segundoPagamento.style.display === "flex";
+
+    // 5. Valida valores da segunda forma de pagamento
+    if(estaComSegundaFormaAtiva){
+        const valor1 = parseFloat(document.getElementById("valor1").value || 0);
+        const valor2 = parseFloat(document.getElementById("valor2").value || 0);
         const soma = valor1 + valor2;
 
-        if(soma !== total){
-
-            alert(
-                `Os pagamentos somam R$ ${soma.toFixed(2)} e o total da venda é R$ ${total.toFixed(2)}`
-            );
-
-            e.preventDefault();
-            return false;
+        if(soma > valorTotalVenda){
+            alert(`Sobrou R$ ${(soma - valorTotalVenda).toFixed(2)}`);
+            return false; 
         }
-
+        if(soma < valorTotalVenda){
+            alert(`Falta R$ ${(valorTotalVenda - soma).toFixed(2)}`);
+            return false; 
+        }
     }
 
+    // 6. VALIDAÇÃO DO DINHEIRO
+    const p2 = document.getElementById("pagamento2") ? document.getElementById("pagamento2").value : "";
+    if (p1 === "Dinheiro" || (estaComSegundaFormaAtiva && p2 === "Dinheiro")) {
+        const campoValorPago = document.getElementById("valor_pago");
+        const valorEntregue = campoValorPago ? (parseFloat(campoValorPago.value) || 0) : 0;
+        let valorDestinadoAoDinheiro = 0;
+
+        if (estaComSegundaFormaAtiva) {
+            valorDestinadoAoDinheiro = (p1 === "Dinheiro") ? 
+                (parseFloat(document.getElementById("valor1").value) || 0) : 
+                (parseFloat(document.getElementById("valor2").value) || 0);
+        } else {
+            valorDestinadoAoDinheiro = valorTotalVenda;
+        }
+
+        if (valorEntregue < valorDestinadoAoDinheiro) {
+            alert(`Erro: O valor entregue em dinheiro (R$ ${valorEntregue.toFixed(2)}) é menor do que o valor exigido.`);
+            return false; 
+        }
+    }
+
+    // === SE TUDO PASSOU SUCESSO ===
+    if (botao) {
+        botao.disabled = true;
+        botao.innerText = "⏳ Processando...";
+    }
+
+    const popup = document.getElementById("popup-sucesso");
+    if(popup) popup.classList.add("mostrar-popup");
+
+    const toast = document.getElementById("toast-sucesso");
+    if(toast) toast.classList.add("mostrar");
+
+    setTimeout(() => {
+        form.submit(); 
+    }, 1600); 
 });
 
 </script>
 
+<script src="{{ url_for('static', filename='sidebar.js') }}"></script>
 </body>
 </html>
