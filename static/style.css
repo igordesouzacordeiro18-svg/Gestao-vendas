@@ -1330,3 +1330,56 @@ button:disabled {
     background-color: #a0aec0 !important; /* Fundo cinza para botões */
     border-color: #a0aec0 !important;
 }
+
+
+
+/* ===================================================
+   ESTILOS PARA IMPRESSÃO DE NOTINHA/CUPOM TÉRMICO
+   =================================================== */
+
+/* Esconde o cupom na tela normal */
+#comprovante-impressao {
+    display: none;
+}
+
+/* Regra aplicada apenas quando o comando de impressão for acionado */
+@media print {
+    /* Esconde todo o conteúdo padrão da página */
+    body * {
+        visibility: hidden !important;
+    }
+
+    /* Torna visível apenas a área da notinha */
+    #comprovante-impressao, #comprovante-impressao * {
+        visibility: visible !important;
+    }
+
+    /* Formatação da fita térmica */
+    #comprovante-impressao {
+        display: block !important;
+        position: absolute !important;
+        left: 0 !important;
+        top: 0 !important;
+        width: 80mm !important; /* Largura padrão de bobina térmica */
+        font-family: 'Courier New', Courier, monospace !important;
+        font-size: 11px !important;
+        color: #000 !important;
+        background: #fff !important;
+        padding: 5px !important;
+        margin: 0 !important;
+        line-height: 1.1 !important; /* Compacta as linhas para não esticar */
+    }
+
+    /* Tira o espaçamento excessivo dos parágrafos e divs na hora de imprimir */
+    #comprovante-impressao p, 
+    #comprovante-impressao div {
+        margin-top: 2px !important;
+        margin-bottom: 2px !important;
+    }
+
+    /* Remove margens e cabeçalhos padrão da impressora */
+    @page {
+        margin: 0mm;
+        size: auto;
+    }
+}

@@ -451,16 +451,36 @@ def dashboard():
     valor_total_caixa = 0
     ultimas_vendas_lista = []
 
+    # Variáveis para o resumo da notinha (do caixa atual)
+    total_dinheiro = 0.0
+    total_debito = 0.0
+    total_credito = 0.0
+    total_pix = 0.0
+
     if caixa_atual:
         # Busca todas as vendas que pertencem ao caixa que está aberto atualmente
         vendas_caixa = Venda.query.filter_by(usuario_id=id_logado, caixa_id=caixa_atual.id).all()
         total_vendas_periodo = len(vendas_caixa)
         valor_total_caixa = caixa_atual.valor_inicial + caixa_atual.vendas_periodo
 
+        # Soma os totais por forma de pagamento no caixa atual
+        for v in vendas_caixa:
+            # Tenta pegar o campo de pagamento (se existir no modelo)
+            metodo = str(getattr(v, 'pagamento', getattr(v, 'forma_pagamento', 'dinheiro'))).lower()
+            valor = float(v.valor_total or 0)
+
+            if 'pix' in metodo:
+                total_pix += valor
+            elif 'débito' in metodo or 'debito' in metodo:
+                total_debito += valor
+            elif 'crédito' in metodo or 'credito' in metodo:
+                total_credito += valor
+            else:
+                total_dinheiro += valor
+
         # Pega as últimas 5 vendas do período atual (da mais recente para a mais antiga)
         for v in reversed(vendas_caixa):
             if len(ultimas_vendas_lista) < 5:
-                # Carrega os produtos vendidos que salvamos em texto JSON
                 try:
                     itens = json.loads(v.produtos_vendidos)
                 except:
@@ -470,19 +490,15 @@ def dashboard():
                     "id": v.id,
                     "total": v.valor_total,
                     "data": v.data,
+                    "pagamento": getattr(v, 'pagamento', 'Dinheiro'),
                     "itens": itens
                 })
 
-    # 3. Estatísticas Gerais de todas as vendas do usuário (para os gráficos)
+    # 3. Estatísticas Gerais (para produtos mais vendidos)
     todas_vendas = Venda.query.filter_by(usuario_id=id_logado).all()
-    
     contador_produtos = {}
-    total_pix = 0
-    total_cartao = 0
-    total_dinheiro = 0
 
     for venda in todas_vendas:
-        # No SQLite, guardamos os produtos vendidos como String de JSON. Vamos decodificar:
         try:
             itens = json.loads(venda.produtos_vendidos)
         except:
@@ -494,26 +510,27 @@ def dashboard():
             if nome_p:
                 contador_produtos[nome_p] = contador_produtos.get(nome_p, 0) + qtd
 
-        # Classificação básica de pagamentos para os cards do dashboard
-        # (Se quiser melhorar no futuro salvando a forma de pagamento na tabela Venda, já temos a lógica engatilhada!)
-        total_dinheiro += venda.valor_total # Por enquanto, soma tudo como dinheiro se não houver campo específico
-
     produto_mais_vendido = "Nenhum"
     if contador_produtos:
         produto_mais_vendido = max(contador_produtos, key=contador_produtos.get)
+
+    # Data e hora formatadas para o topo da notinha
+    data_hoje = datetime.now().strftime("%d/%m/%Y %H:%M")
 
     return render_template(
         "dashboard.html",
         total_vendas=total_vendas_periodo,
         total_produtos=total_produtos,
-        valor_total=valor_total_caixa,
+        valor_total=f"{valor_total_caixa:.2f}",
         ultimas_vendas=ultimas_vendas_lista,
         produto_mais_vendido=produto_mais_vendido,
-        pix=total_pix,
-        cartao=total_cartao,
-        dinheiro=total_dinheiro
+        # Variáveis enviadas para a notinha de impressão:
+        data_atual=data_hoje,
+        total_dinheiro=f"{total_dinheiro:.2f}",
+        total_debito=f"{total_debito:.2f}",
+        total_credito=f"{total_credito:.2f}",
+        total_pix=f"{total_pix:.2f}"
     )
-
 
 # 1. ROTA PARA LISTAR OS PRODUTOS DO USUÁRIO LOGADO
 @app.route("/produtos")
