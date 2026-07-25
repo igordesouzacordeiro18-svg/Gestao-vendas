@@ -74,9 +74,12 @@
                         💰 Caixa Total
                     </h3>
 
-                    <p>
-                        R$ {{ valor_total }}
+                    <p id="caixa-texto" style="margin: 8px 0; font-size: 24px; font-weight: bold; cursor: pointer;" onclick="toggleCaixa()">
+                        R$ ••••• <span style="font-size: 16px; margin-left: 6px;">🔒</span>
                     </p>
+
+                    <!-- Guardamos o valor real escondido -->
+                    <input type="hidden" id="valor-real-caixa" value="{{ valor_total }}">
 
                 </div>
 
@@ -224,6 +227,32 @@ function confirmarGerente() {
 function bloquearModo() {
     fetch('/bloquear-modo', { method: 'POST' })
     .then(() => window.location.reload());
+}
+
+
+// Defina aqui a senha de 3 dígitos (ex: 123)
+const SENHA_CAIXA = "123"; 
+
+function toggleCaixa() {
+    const el = document.getElementById('caixa-texto');
+    const valorReal = document.getElementById('valor-real-caixa').value;
+
+    // Se já estiver visível, clica e oculta de volta sem pedir senha
+    if (el.getAttribute('data-visivel') === 'true') {
+        el.innerHTML = `R$ ••••• <span style="font-size: 16px; margin-left: 6px;">🔒</span>`;
+        el.setAttribute('data-visivel', 'false');
+        return;
+    }
+
+    // Se estiver oculto, pede a senha de 3 dígitos
+    const pin = prompt("Digite a senha de 3 dígitos para ver o Caixa:");
+    
+    if (pin === SENHA_CAIXA) {
+        el.innerHTML = `R$ ${valorReal} <span style="font-size: 16px; margin-left: 6px;">🔓</span>`;
+        el.setAttribute('data-visivel', 'true');
+    } else if (pin !== null) {
+        alert("Senha incorreta!");
+    }
 }
 </script>
 
