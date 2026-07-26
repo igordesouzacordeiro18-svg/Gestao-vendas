@@ -1334,80 +1334,73 @@ button:disabled {
 
 
 /* ===================================================
-   ESTILOS PARA IMPRESSÃO DE NOTINHA/CUPOM TÉRMICO
+   ESTILOS PARA IMPRESSÃO DE NOTINHA/CUPOM TÉRMICO (58MM)
    =================================================== */
 
-/* Esconde o cupom na tela normal */
+/* Esconde o comprovante na exibição normal da tela */
 #comprovante-impressao {
     display: none;
 }
 
-/* Regra aplicada apenas quando o comando de impressão for acionado */
+/* Regra aplicada apenas quando a impressão for acionada */
 @media print {
-    /* Esconde todo o conteúdo padrão da página */
+    /* Define a bobina de 58mm com altura contínua automática sem margens de folha */
+    @page {
+        size: 58mm auto;
+        margin: 0mm;
+    }
+
+    /* Oculta absolutamente tudo da página normal */
     body * {
         visibility: hidden !important;
     }
 
-    /* Torna visível apenas a área da notinha */
-    #comprovante-impressao, #comprovante-impressao * {
+    /* Torna visível e formata apenas o comprovante */
+    #comprovante-impressao, 
+    #comprovante-impressao * {
         visibility: visible !important;
     }
 
-    /* Formatação da fita térmica */
+    /* Configuração da fita de 58mm */
     #comprovante-impressao {
         display: block !important;
         position: absolute !important;
         left: 0 !important;
         top: 0 !important;
-        width: 80mm !important; /* Largura padrão de bobina térmica */
+        width: 58mm !important;
+        max-width: 58mm !important;
+        height: auto !important;
+        padding: 2mm !important;
+        margin: 0 !important;
+        box-sizing: border-box !important;
+        
+        /* Fontes ajustadas para boa leitura em 58mm no Chrome Android */
         font-family: 'Courier New', Courier, monospace !important;
-        font-size: 11px !important;
+        font-size: 13px !important;
+        font-weight: bold !important;
+        line-height: 1.2 !important;
         color: #000 !important;
         background: #fff !important;
-        padding: 5px !important;
-        margin: 0 !important;
-        line-height: 1.1 !important; /* Compacta as linhas para não esticar */
     }
 
-    /* Tira o espaçamento excessivo dos parágrafos e divs na hora de imprimir */
-    #comprovante-impressao p, 
-    #comprovante-impressao div {
-        margin-top: 2px !important;
-        margin-bottom: 2px !important;
-    }
-
-    /* Remove margens e cabeçalhos padrão da impressora */
-    @page {
-        margin: 0mm;
-        size: auto;
-    }
-}
-
-@media print {
-    /* Define o tamanho exato do papel térmico de 58mm */
-    @page {
-        size: 58mm auto;
-        margin: 0;
-    }
-
-    body {
-        width: 58mm !important;
-        margin: 0 !important;
-        padding: 4px !important;
-        font-family: monospace; /* Fonte simples e legível em impressora térmica */
-        font-size: 12px !important; /* Tamanho de fonte visível no cupom */
-        color: #000 !important;
-    }
-
-    /* Esconde botões, menus e tudo que não precisa sair no papel */
-    button, .no-print, navbar, footer {
+    /* Oculta botões e elementos de navegação */
+    button, .no-print, navbar, nav, footer, header {
         display: none !important;
     }
 
-    /* Garante que tabelas e textos ocupem a largura do cupom */
-    table, div, p {
+    /* Ajuste de espaçamento e largura interna para não encolher */
+    #comprovante-impressao p, 
+    #comprovante-impressao div,
+    #comprovante-impressao table {
         width: 100% !important;
-        word-wrap: break-word;
+        margin-top: 2px !important;
+        margin-bottom: 2px !important;
+        word-wrap: break-word !important;
+    }
+
+    #comprovante-impressao th, 
+    #comprovante-impressao td {
+        font-size: 12px !important;
+        padding: 1px 0 !important;
     }
 }
