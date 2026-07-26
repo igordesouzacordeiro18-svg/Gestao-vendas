@@ -1383,3 +1383,31 @@ button:disabled {
         size: auto;
     }
 }
+
+@media print {
+    /* Define o tamanho exato do papel térmico de 58mm */
+    @page {
+        size: 58mm auto;
+        margin: 0;
+    }
+
+    body {
+        width: 58mm !important;
+        margin: 0 !important;
+        padding: 4px !important;
+        font-family: monospace; /* Fonte simples e legível em impressora térmica */
+        font-size: 12px !important; /* Tamanho de fonte visível no cupom */
+        color: #000 !important;
+    }
+
+    /* Esconde botões, menus e tudo que não precisa sair no papel */
+    button, .no-print, navbar, footer {
+        display: none !important;
+    }
+
+    /* Garante que tabelas e textos ocupem a largura do cupom */
+    table, div, p {
+        width: 100% !important;
+        word-wrap: break-word;
+    }
+}
