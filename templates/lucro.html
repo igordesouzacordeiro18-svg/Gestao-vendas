@@ -1,94 +1,18 @@
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
-
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
     <title>Lucro</title>
-
-    <link rel="stylesheet"
-    href="{{ url_for('static', filename='style.css') }}">
-
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 
 <body>
 
 <div class="layout">
 
-    <!-- SIDEBAR (igual a sua) -->
-    <div class="sidebar">
-
-        <h2>🛍️ Loja</h2>
-
-        <ul>
-
-                <li>
-                    <a href="/dashboard">
-                        📊 Início
-                    </a>
-                </li>
-
-                <li>
-                    <a href="/produtos">
-                        📦 Produtos
-                    </a>
-                </li>
-
-                <li>
-                    <a href="/nova-venda">
-                        💰 Nova venda
-                    </a>
-                </li>
-
-                 <li>
-                    <a href="/nova-troca">
-                        🔁 Troca
-                    </a>
-                </li>
-
-                <li>
-                    <a href="/historico">
-                        🧾 Histórico
-                    </a>
-                </li>
-
-                <li>
-                    <a href="/caixa">
-                        💵 Caixa
-                    </a>
-                </li>
-                
-
-                <li>
-                    <a href="/lucro">
-                        📈 Lucro
-                    </a>
-                </li>
-
-
-                <li>
-                    <a href="/relatorios">
-                        📊 Relatórios
-                    </a>
-                </li>
-
-                <li>
-                    <a href="/estoque">
-                        📦 Estoque
-                    </a>
-                </li>
-
-                <li>
-                    <a href="/gestao">
-                        ⚙️ Gestão
-                    </a>
-                </li>
-
-
-            </ul>
-
-    </div>
+    <!-- SIDEBAR DINÂMICA (Puxa o arquivo sidebar.html atualizado) -->
+    {% include 'sidebar.html' %}
 
     <!-- MAIN -->
     <div class="main">
@@ -113,13 +37,11 @@
 
         <!-- PRODUTOS COM CUSTO (TABELA) -->
         <div class="card">
-
             <h2>
                 ✅ Produtos contabilizados ({{ produtos_com_custo|length }})
             </h2>
 
             <div class="tabela">
-
                 <div class="linha header">
                     <span>Produto</span>
                     <span>Custo</span>
@@ -128,47 +50,33 @@
 
                 {% for produto in produtos_com_custo %}
                 <div class="linha">
-
                     <span>📦 {{ produto.nome }}</span>
-
                     <span>R$ {{ produto.custo }}</span>
-
                     <span>R$ {{ produto.preco }}</span>
-
                 </div>
                 {% endfor %}
-
             </div>
-
         </div>
 
         <br><br>
 
         <!-- SEM CUSTO -->
         <div class="card">
-
             <h2>
                 ⚪ Produtos sem custo cadastrado ({{ produtos_sem_custo|length }})
             </h2>
 
             <div class="tabela">
-
                 {% for produto in produtos_sem_custo %}
                 <div class="linha">
-
                     <span>📦 {{ produto.nome }}</span>
-
                     <span style="color:gray;">Sem custo</span>
-
                     <span>
-                    <a href="/editar-gestao/{{ produto.id }}" class="btn-adicionar">➕ Adicionar</a>
+                        <a href="/editar-gestao/{{ produto.id }}" class="btn-adicionar">➕ Adicionar</a>
                     </span>
-
                 </div>
                 {% endfor %}
-
             </div>
-
         </div>
 
     </div>
@@ -177,7 +85,6 @@
 
 <script src="{{ url_for('static', filename='sidebar.js') }}"></script>
 </body>
-
 </html>
 
 

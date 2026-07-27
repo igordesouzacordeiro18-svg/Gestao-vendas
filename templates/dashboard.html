@@ -131,10 +131,6 @@
                     </button>
                 {% endif %}
 
-                <button onclick="window.print()" style="background: #2563eb; color: white; border: none; padding: 10px 16px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px;">
-                    🖨️ Imprimir Resumo
-                </button>
-                
             </div>
 
             <div class="historico-recente">
@@ -186,113 +182,6 @@
         </div>
 
     </div>
-
-<!-- MODELO DE IMPRESSÃO (NOTINHA ESTILO COMPROVANTE TÉRMICO) -->
-<div id="comprovante-impressao">
-    <div style="text-align: center; margin-bottom: 10px;">
-        <h2 style="margin: 0; font-size: 15px; font-weight: bold; text-transform: uppercase;">RESUMO DE CAIXA</h2>
-        <p style="margin: 2px 0; font-size: 11px;">Data: {{ data_atual if data_atual else "25/07/2026 14:15" }}</p>
-    </div>
-
-    <div style="border-top: 1px dashed #000; padding-top: 6px; margin-top: 6px;">
-        <div style="display: flex; justify-content: space-between;">
-            <span>Total vendido (+)</span>
-            <strong>R$ {{ valor_total }}</strong>
-        </div>
-        <div style="display: flex; justify-content: space-between; font-size: 11px; padding-left: 8px;">
-            <span>DINHEIRO</span>
-            <span>R$ {{ total_dinheiro if total_dinheiro else "0,00" }}</span>
-        </div>
-        <div style="display: flex; justify-content: space-between; font-size: 11px; padding-left: 8px;">
-            <span>DÉBITO</span>
-            <span>R$ {{ total_debito if total_debito else "0,00" }}</span>
-        </div>
-        <div style="display: flex; justify-content: space-between; font-size: 11px; padding-left: 8px;">
-            <span>CRÉDITO</span>
-            <span>R$ {{ total_credito if total_credito else "0,00" }}</span>
-        </div>
-        <div style="display: flex; justify-content: space-between; font-size: 11px; padding-left: 8px;">
-            <span>PIX</span>
-            <span>R$ {{ total_pix if total_pix else "0,00" }}</span>
-        </div>
-    </div>
-
-    <div style="border-top: 1px dashed #000; margin-top: 8px; padding-top: 6px;">
-        <div style="display: flex; justify-content: space-between; font-weight: bold;">
-            <span>Saldo (=)</span>
-            <span>R$ {{ valor_total }}</span>
-        </div>
-    </div>
-
-    <!-- DETALHAMENTO COM ENTRADA, SAÍDA E SALDO -->
-    <div style="border-top: 1px dashed #000; margin-top: 10px; padding-top: 6px;">
-        <p style="margin: 0 0 4px 0; text-align: center; font-weight: bold;">Dinheiro</p>
-        <div style="display: flex; justify-content: space-between; font-size: 11px;">
-            <span>Entrada (+)</span>
-            <span>R$ {{ total_dinheiro if total_dinheiro else "0,00" }}</span>
-        </div>
-        <div style="display: flex; justify-content: space-between; font-size: 11px;">
-            <span>Saída (-)</span>
-            <span>R$ 0,00</span>
-        </div>
-        <div style="display: flex; justify-content: space-between; font-size: 11px; font-weight: bold;">
-            <span>Saldo (=)</span>
-            <span>R$ {{ total_dinheiro if total_dinheiro else "0,00" }}</span>
-        </div>
-    </div>
-
-    <div style="border-top: 1px dashed #000; margin-top: 8px; padding-top: 6px;">
-        <p style="margin: 0 0 4px 0; text-align: center; font-weight: bold;">Débito</p>
-        <div style="display: flex; justify-content: space-between; font-size: 11px;">
-            <span>Entrada (+)</span>
-            <span>R$ {{ total_debito if total_debito else "0,00" }}</span>
-        </div>
-        <div style="display: flex; justify-content: space-between; font-size: 11px;">
-            <span>Saída (-)</span>
-            <span>R$ 0,00</span>
-        </div>
-        <div style="display: flex; justify-content: space-between; font-size: 11px; font-weight: bold;">
-            <span>Saldo (=)</span>
-            <span>R$ {{ total_debito if total_debito else "0,00" }}</span>
-        </div>
-    </div>
-
-    <div style="border-top: 1px dashed #000; margin-top: 8px; padding-top: 6px;">
-        <p style="margin: 0 0 4px 0; text-align: center; font-weight: bold;">Crédito</p>
-        <div style="display: flex; justify-content: space-between; font-size: 11px;">
-            <span>Entrada (+)</span>
-            <span>R$ {{ total_credito if total_credito else "0,00" }}</span>
-        </div>
-        <div style="display: flex; justify-content: space-between; font-size: 11px;">
-            <span>Saída (-)</span>
-            <span>R$ 0,00</span>
-        </div>
-        <div style="display: flex; justify-content: space-between; font-size: 11px; font-weight: bold;">
-            <span>Saldo (=)</span>
-            <span>R$ {{ total_credito if total_credito else "0,00" }}</span>
-        </div>
-    </div>
-
-    <div style="border-top: 1px dashed #000; margin-top: 8px; padding-top: 6px;">
-        <p style="margin: 0 0 4px 0; text-align: center; font-weight: bold;">Pix</p>
-        <div style="display: flex; justify-content: space-between; font-size: 11px;">
-            <span>Entrada (+)</span>
-            <span>R$ {{ total_pix if total_pix else "0,00" }}</span>
-        </div>
-        <div style="display: flex; justify-content: space-between; font-size: 11px;">
-            <span>Saída (-)</span>
-            <span>R$ 0,00</span>
-        </div>
-        <div style="display: flex; justify-content: space-between; font-size: 11px; font-weight: bold;">
-            <span>Saldo (=)</span>
-            <span>R$ {{ total_pix if total_pix else "0,00" }}</span>
-        </div>
-    </div>
-
-    <div style="border-top: 1px dashed #000; margin-top: 12px; padding-top: 8px; text-align: center;">
-        <p style="margin: 0; font-size: 10px;">-- FIM DO RELATÓRIO --</p>
-    </div>
-</div>
 
 <!-- MODAL HUMANIZADO DE CONFIRMAÇÃO DE SENHA -->
 <dialog id="modalGerente" style="border: none; border-radius: 12px; padding: 24px; box-shadow: 0 10px 25px rgba(0,0,0,0.15); max-width: 320px; width: 100%;">

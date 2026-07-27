@@ -1,171 +1,54 @@
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
-
     <meta charset="UTF-8">
-
-    <meta name="viewport"
-    content="width=device-width, initial-scale=1.0">
-
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Estoque</title>
-
-    <link rel="stylesheet"
-    href="{{ url_for('static', filename='style.css') }}">
-
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 
 <body>
 
 <div class="layout">
 
-    <div class="sidebar">
-
-        <h2>
-            🛍️ Loja
-        </h2>
-
-        <ul>
-
-                <li>
-                    <a href="/dashboard">
-                        📊 Início
-                    </a>
-                </li>
-
-                <li>
-                    <a href="/produtos">
-                        📦 Produtos
-                    </a>
-                </li>
-
-                <li>
-                    <a href="/nova-venda">
-                        💰 Nova venda
-                    </a>
-                </li>
-
-                 <li>
-                    <a href="/nova-troca">
-                        🔁 Troca
-                    </a>
-                </li>
-
-                <li>
-                    <a href="/historico">
-                        🧾 Histórico
-                    </a>
-                </li>
-
-                <li>
-                    <a href="/caixa">
-                        💵 Caixa
-                    </a>
-                </li>
-                
-
-                <li>
-                    <a href="/lucro">
-                        📈 Lucro
-                    </a>
-                </li>
-
-
-                <li>
-                    <a href="/relatorios">
-                        📊 Relatórios
-                    </a>
-                </li>
-
-                <li>
-                    <a href="/estoque">
-                        📦 Estoque
-                    </a>
-                </li>
-
-                <li>
-                    <a href="/gestao">
-                        ⚙️ Gestão
-                    </a>
-                </li>
-
-
-            </ul>
-
-    </div>
+    <!-- SIDEBAR DINÂMICA -->
+    {% include 'sidebar.html' %}
 
     <div class="main">
 
-        <h1>
-            📦 Controle de Estoque
-        </h1>
+        <h1>📦 Controle de Estoque</h1>
 
-            <br>
+        <br>
 
-            <a href="/criar-estoque">
+        <a href="/criar-estoque">
+            <button>➕ Criar / Atualizar Estoque</button>
+        </a>
 
-                <button>
-
-                    ➕ Criar / Atualizar Estoque
-
-                </button>
-
-            </a>
-
-            <br><br>
+        <br><br>
 
         <div class="grid-produtos">
-
             {% for produto in produtos %}
-
                 <div class="produto-item">
-
-                    <h3>
-                        📦 {{ produto["nome"] }}
-                    </h3>
-
-                    <strong>
-                        💰 R$ {{ produto["preco"] }}
-                    </strong>
+                    <h3>📦 {{ produto["nome"] }}</h3>
+                    <strong>💰 R$ {{ produto["preco"] }}</strong>
 
                     <br><br>
 
                     {% if produto["estoque"] == 0 %}
-
-                        <span class="status-estoque status-zero">
-
-                            ⚪ Sem estoque
-
-                        </span>
-
+                        <span class="status-estoque status-zero">⚪ Sem estoque</span>
                     {% elif produto["estoque"] <= produto["estoque_minimo"] %}
-
-                        <span class="status-estoque status-baixo">
-
-                            🔴 Estoque baixo:
-                            {{ produto["estoque"] }}
-
-                        </span>
-
+                        <span class="status-estoque status-baixo">🔴 Estoque baixo: {{ produto["estoque"] }}</span>
                     {% else %}
-
-                        <span class="status-estoque status-ok">
-
-                            🟢 Em estoque:
-                            {{ produto["estoque"] }}
-
-                        </span>
-
+                        <span class="status-estoque status-ok">🟢 Em estoque: {{ produto["estoque"] }}</span>
                     {% endif %}
-
                 </div>
-
             {% endfor %}
-
         </div>
 
     </div>
 
 </div>
+
 <script src="{{ url_for('static', filename='sidebar.js') }}"></script>
 </body>
 </html>

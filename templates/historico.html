@@ -45,6 +45,116 @@
             margin-top: 10px;
             border-left: 3px solid #ff9800;
         }
+
+        /* 🌟 ESTILOS PARA CANCELAMENTO DE VENDA */
+        .card-cancelada {
+            background-color: #ffebee !important;
+            border-left: 5px solid #f44336 !important;
+            opacity: 0.85;
+        }
+        .badge-cancelada {
+            background-color: #e53935;
+            color: white;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+            display: inline-block;
+            margin-left: 8px;
+        }
+        .motivo-box {
+            background-color: #ffcdd2;
+            color: #b71c1c;
+            padding: 8px;
+            border-radius: 4px;
+            font-size: 13px;
+            margin-top: 10px;
+            border-left: 3px solid #d32f2f;
+        }
+
+        /* 🔴 BOTÃO 'X' DISCRETO NO CANTO SUPERIOR DIREITO */
+        .produto-item {
+            position: relative; /* Garante o alinhamento absoluto do X */
+        }
+        .btn-fechar-x {
+            position: absolute;
+            top: 10px;
+            right: 12px;
+            background: transparent;
+            border: none;
+            color: #e53935;
+            font-size: 1.1rem;
+            font-weight: bold;
+            cursor: pointer;
+            line-height: 1;
+            padding: 4px 6px;
+            border-radius: 50%;
+            transition: all 0.2s ease-in-out;
+            opacity: 0.6;
+        }
+        .btn-fechar-x:hover {
+            opacity: 1;
+            background-color: #ffebee;
+            transform: scale(1.15);
+        }
+
+        /* 🌟 MODAL / POPUP DE CANCELAMENTO */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            z-index: 9999;
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-container {
+            background: white;
+            padding: 25px;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 450px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        }
+        .modal-container h3 {
+            margin-top: 0;
+            color: #d32f2f;
+        }
+        .modal-container select, .modal-container textarea {
+            width: 100%;
+            padding: 10px;
+            margin-top: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            box-sizing: border-box;
+            font-size: 14px;
+        }
+        .modal-acoes {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        .btn-modal-confirmar {
+            background-color: #d32f2f;
+            color: white;
+            border: none;
+            padding: 10px;
+            border-radius: 5px;
+            font-weight: bold;
+            cursor: pointer;
+            flex: 1;
+        }
+        .btn-modal-fechar {
+            background-color: #757575;
+            color: white;
+            border: none;
+            padding: 10px;
+            border-radius: 5px;
+            font-weight: bold;
+            cursor: pointer;
+            flex: 1;
+        }
     </style>
 </head>
 <body>
@@ -63,11 +173,30 @@
         </div>
 
         <div id="secao-vendas" class="secao-historico ativa">
-            <h2>💰 Total vendido: R$ {{ total }}</h2>
+            <h2>💰 Total vendido no caixa: R$ {{ total }}</h2>
             <div class="grid-produtos">
                 {% for venda in vendas %}
-                    <div class="produto-item item-pesquisa">
-                        <h3>🧾 Venda #{{ venda.id }}</h3>
+                    <div class="produto-item item-pesquisa {% if venda.status == 'CANCELADA' %}card-cancelada{% endif %}">
+                        
+                        <!-- 🔴 "X" discreto no canto superior direito para cancelar -->
+                        {% if venda.status != 'CANCELADA' %}
+                            <button type="button" 
+                                    class="btn-fechar-x" 
+                                    title="Cancelar/Estornar Venda" 
+                                    onclick="abrirModalCancelamento('{{ venda.id }}')">
+                                ✕
+                            </button>
+                        {% endif %}
+
+                        <h3>
+                            {% if venda.status == 'CANCELADA' %}
+                                <s>🧾 Venda #{{ venda.id }}</s>
+                                <span class="badge-cancelada">CANCELADA</span>
+                            {% else %}
+                                🧾 Venda #{{ venda.id }}
+                            {% endif %}
+                        </h3>
+
                         <div class="itens-venda">
                             {% for item in venda.itens %}
                                 <div class="tag-item">
@@ -80,12 +209,19 @@
                         <strong>💰 Total: R$ {{ venda.total }}</strong>
                         <span>💳 {{ venda.pagamento }}</span>
                         <small>🕒 {{ venda.data }}</small>
+
+                        {% if venda.status == 'CANCELADA' %}
+                            <div class="motivo-box">
+                                <strong>⚠️ Motivo do Cancelamento:</strong><br>
+                                {{ venda.motivo_cancelamento }}
+                            </div>
+                        {% endif %}
                     </div>
                 {% endfor %}
             </div>
         </div>
 
-       <div id="secao-trocas" class="secao-historico">
+        <div id="secao-trocas" class="secao-historico">
             <h2>🔄 Registro de Trocas da Loja</h2>
             <div class="grid-produtos">
                 {% if trocas %}
@@ -118,7 +254,6 @@
 
                                 {% set diferenca_calculada = troca.total_compra - troca.credito %}
 
-                                {# Se o saldo salvo for zero, mas o crédito inicial era maior que o total da compra, significa que o cliente abriu mão da diferença #}
                                 {% if troca.saldo_diferenca == 0 and troca.credito > troca.total_compra %}
                                     <div style="margin-top: 10px; background-color: #e8f5e9; color: #2e7d32; padding: 8px; border-radius: 4px; font-size: 13px; font-weight: bold; border-left: 3px solid #4caf50;">
                                         📈 Lucro Extra por Desapego: R$ {{ (troca.credito - troca.total_compra)|abs|round(2) }}
@@ -156,35 +291,129 @@
     </div>
 </div>
 
+<!-- 🌟 MODAL DE MOTIVO DO CANCELAMENTO -->
+<div id="modalCancelamento" class="modal-overlay">
+    <div class="modal-container">
+        <h3>⚠️ Cancelar Venda</h3>
+        <p>Ao cancelar, a venda será estornada do Caixa e os produtos voltarão para o Estoque.</p>
+        
+        <label for="selectMotivo"><strong>Qual o motivo do cancelamento?</strong></label>
+        <select id="selectMotivo" onchange="verificarOutroMotivo()">
+            <option value="">-- Selecione um motivo --</option>
+            <option value="Falha no Pagamento (Cartão Recusado / Pix Não Caiu)">💳 Falha no Pagamento (Cartão/Pix)</option>
+            <option value="Desistência do Cliente">🛍️ Desistência do Cliente</option>
+            <option value="Erro de Lançamento no Caixa">✏️ Erro de Lançamento no Caixa</option>
+            <option value="Produto Danificado / Defeito">🏷️ Produto Danificado / Defeito</option>
+            <option value="Outro Motivo">Outro Motivo...</option>
+        </select>
+
+        <textarea id="textoOutroMotivo" placeholder="Descreva detalhadamente o motivo..." style="display: none;" rows="3"></textarea>
+
+        <div class="modal-acoes">
+            <button class="btn-modal-fechar" onclick="fecharModalCancelamento()">Voltar</button>
+            <button class="btn-modal-confirmar" onclick="confirmarCancelamento()">Confirmar Cancelamento</button>
+        </div>
+    </div>
+</div>
 <script>
+let vendaIdParaCancelar = null;
+
 // Função para alternar entre as telas de Vendas e Trocas
 function alternarAba(secao, botao) {
-    // Esconde todas as seções
     document.querySelectorAll('.secao-historico').forEach(s => s.classList.remove('ativa'));
-    // Remove classe ativa de todos os botões
     document.querySelectorAll('.btn-aba').forEach(b => b.classList.remove('ativa'));
     
-    // Mostra a seção desejada e ativa o botão correto
     document.getElementById('secao-' + secao).classList.add('ativa');
     botao.classList.add('ativa');
 }
 
-// Filtro de Pesquisa Inteligente (funciona para ambas as abas)
+// Filtro de Pesquisa Inteligente
 const pesquisa = document.getElementById("pesquisa");
-pesquisa.addEventListener("input", () => {
-    const valor = pesquisa.value.toLowerCase();
-    const itens = document.querySelectorAll(".item-pesquisa");
+if (pesquisa) {
+    pesquisa.addEventListener("input", () => {
+        const valor = pesquisa.value.toLowerCase();
+        const itens = document.querySelectorAll(".item-pesquisa");
 
-    itens.forEach(item => {
-        const texto = item.innerText.toLowerCase();
-        if (texto.includes(valor)) {
-            item.style.display = "flex";
-        } else {
-            item.style.display = "none";
-        }
+        itens.forEach(item => {
+            const texto = item.innerText.toLowerCase();
+            if (texto.includes(valor)) {
+                item.style.display = "flex";
+            } else {
+                item.style.display = "none";
+            }
+        });
     });
-});
+}
+
+// Funções do Modal de Cancelamento
+function abrirModalCancelamento(vendaId) {
+    vendaIdParaCancelar = vendaId; // Salva o ID corretamente aqui!
+    document.getElementById('selectMotivo').value = "";
+    document.getElementById('textoOutroMotivo').value = "";
+    document.getElementById('textoOutroMotivo').style.display = "none";
+    document.getElementById('modalCancelamento').style.display = "flex";
+}
+
+function fecharModalCancelamento() {
+    vendaIdParaCancelar = null;
+    document.getElementById('modalCancelamento').style.display = "none";
+}
+
+function verificarOutroMotivo() {
+    const select = document.getElementById('selectMotivo');
+    const textarea = document.getElementById('textoOutroMotivo');
+    if (select.value === 'Outro Motivo') {
+        textarea.style.display = "block";
+    } else {
+        textarea.style.display = "none";
+    }
+}
+
+function confirmarCancelamento() {
+    const motivoSelect = document.getElementById("selectMotivo").value;
+    const motivoText = document.getElementById("textoOutroMotivo").value;
+    
+    // Define qual motivo vai enviar
+    let motivoFinal = motivoSelect;
+    if (motivoSelect === "Outro Motivo") {
+        motivoFinal = motivoText;
+    }
+
+    if (!motivoFinal) {
+        alert("⚠️ Por favor, selecione ou digite o motivo do cancelamento.");
+        return;
+    }
+
+    // Corrigido: usando vendaIdParaCancelar!
+    if (!vendaIdParaCancelar) {
+        alert("⚠️ Erro: ID da venda não foi encontrado.");
+        return;
+    }
+
+    // Cria o formulário para enviar via POST
+    const formData = new FormData();
+    formData.append("motivo", motivoFinal);
+
+    // Envia a requisição para a rota do Flask
+    fetch(`/cancelar-venda/${vendaIdParaCancelar}`, {
+        method: "POST",
+        body: formData
+    })
+    .then(response => {
+        if (response.ok || response.redirected) {
+            // Recarrega a página para atualizar o caixa, estoque e histórico
+            window.location.reload();
+        } else {
+            alert("❌ Erro no servidor ao tentar cancelar a venda (Código " + response.status + ")");
+        }
+    })
+    .catch(error => {
+        console.error("Erro:", error);
+        alert("❌ Erro de conexão ao tentar cancelar a venda.");
+    });
+}
 </script>
+
 <script src="{{ url_for('static', filename='sidebar.js') }}"></script>
 </body>
 </html>

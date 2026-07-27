@@ -5,6 +5,31 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Caixa</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+
+    <style>
+        /* 1. ESCONDE O COMPROVANTE NA TELA NORMAL */
+        #comprovante-impressao {
+            display: none;
+        }
+
+        /* 2. REGRA DE IMPRESSÃO (Mostra só o cupom ao imprimir) */
+        @media print {
+            body * {
+                visibility: hidden;
+            }
+            #comprovante-impressao, #comprovante-impressao * {
+                visibility: visible;
+            }
+            #comprovante-impressao {
+                display: block !important;
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 80mm; /* Largura padrão de impressora térmica */
+                font-family: monospace;
+            }
+        }
+    </style>
 </head>
 <body>
 
@@ -13,7 +38,7 @@
 
     <div class="main">
         
-        <!-- 🔔 BLOCO DE MENSAGENS DE SUCESSO DO FLASK -->
+        <!-- MENSAGENS DE FLASK -->
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
                 {% for category, message in messages %}
@@ -41,120 +66,80 @@
                 <div class="info-caixa">
                     <div class="card-caixa-info">
                         <span>💰 Valor Inicial</span>
-                        <strong>R$ {{ caixa.valor_inicial }}</strong>
+                        <strong>R$ {{ "%.2f"|format(caixa.valor_inicial) }}</strong>
                     </div>
                     <div class="card-caixa-info">
                         <span>💵 Vendas do Período</span>
-                        <strong>R$ {{ caixa.vendas_periodo }}</strong>
+                        <strong>R$ {{ "%.2f"|format(caixa.vendas_periodo) }}</strong>
+                    </div>
+                    <!-- CARD DE DESPESAS/SANGRIA -->
+                    <div class="card-caixa-info" style="border-left: 4px solid #ef4444;">
+                        <span>💸 Saídas / Despesas</span>
+                        <strong style="color: #dc2626;">- R$ {{ "%.2f"|format(caixa.despesas) }}</strong>
                     </div>
                     <div class="card-caixa-info">
                         <span>💲 Saldo Atual</span>
-                        <strong>R$ {{ caixa.valor_inicial + caixa.vendas_periodo }}</strong>
+                        <strong style="color: #16a34a;">R$ {{ "%.2f"|format(caixa.saldo_atual) }}</strong>
                     </div>
                     <div class="card-caixa-info">
                         <span>🕒 Aberto em</span>
                         <strong>{{ caixa.data_abertura }}</strong>
                     </div>
                 </div>
-                <br>
+                
+                <hr style="margin: 20px 0; border: 0; border-top: 1px solid #e2e8f0;">
+
+                <!-- BOTAO DE FECHAR CAIXA -->
                 <form id="form-fechar-caixa" action="/fechar-caixa" method="POST">
-                    <button type="submit" id="btn-fechar-caixa">🔒 Fechar Caixa</button>
+                    <button type="submit" id="btn-fechar-caixa" style="width: 100%; background: #dc2626; color: white;">🔒 Fechar Caixa</button>
                 </form>
+            </div>
+
+            <!-- SEÇÃO DEDICADA SÓ PARA O BOTÃO DE IMPRESSÃO (ABAIXO DO CAIXA) -->
+            <div class="card" style="margin-top: 20px; text-align: center;">
+                <h3 style="margin-top: 0; margin-bottom: 10px; font-size: 16px; color: #475569;">📋 Relatório do Turno</h3>
+                <button type="button" onclick="window.print()" style="background: #2563eb; color: white; border: none; padding: 12px 24px; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 600; display: inline-flex; align-items: center; gap: 8px;">
+                    🖨️ Imprimir Resumo de Caixa
+                </button>
             </div>
         {% endif %}
     </div>
 </div>
 
-<script>
-    document.addEventListener("DOMContentLoaded", function() {
-        const inputMensagem = document.getElementById("mensagem-flask");
-        
-        // Se o Flask enviou uma mensagem, ela vai estar no input oculto
-        if (inputMensagem && inputMensagem.value) {
-            const popup = document.getElementById("popup-caixa");
-            const textoPopup = document.getElementById("texto-popup-caixa");
-            
-            textoPopup.innerText = inputMensagem.value;
-            popup.style.display = "flex"; // Mostra o popup
-            
-            // Esconde o popup automaticamente depois de 3 segundos
-            setTimeout(() => {
-                popup.style.opacity = "0";
-                setTimeout(() => { 
-                    popup.style.display = "none"; 
-                    popup.style.opacity = "1"; 
-                }, 500);
-            }, 3000);
-        }
-    });
-</script>
+<!-- COMPROVANTE OCULTO PARA IMPRESSORA TÉRMICA -->
+<div id="comprovante-impressao">
+    <div style="text-align: center; margin-bottom: 10px;">
+        <h2 style="margin: 0; font-size: 15px; font-weight: bold; text-transform: uppercase;">RESUMO DE CAIXA</h2>
+        <p style="margin: 2px 0; font-size: 11px;">Data: {{ data_atual if data_atual else "26/07/2026" }}</p>
+    </div>
 
-</body>
-</html>
-<script>
-function fecharCaixa(event){
+    <div style="border-top: 1px dashed #000; padding-top: 6px; margin-top: 6px;">
+        <div style="display: flex; justify-content: space-between;">
+            <span>Valor Inicial (+)</span>
+            <strong>R$ {{ "%.2f"|format(caixa.valor_inicial) if caixa else "0,00" }}</strong>
+        </div>
+        <div style="display: flex; justify-content: space-between;">
+            <span>Total Vendido (+)</span>
+            <strong>R$ {{ "%.2f"|format(caixa.vendas_periodo) if caixa else "0,00" }}</strong>
+        </div>
+        <div style="display: flex; justify-content: space-between;">
+            <span>Despesas/Saídas (-)</span>
+            <strong style="color: #000;">R$ {{ "%.2f"|format(caixa.despesas) if caixa else "0,00" }}</strong>
+        </div>
+    </div>
 
-    event.preventDefault();
+    <div style="border-top: 1px dashed #000; margin-top: 8px; padding-top: 6px;">
+        <div style="display: flex; justify-content: space-between; font-weight: bold;">
+            <span>Saldo Final (=)</span>
+            <span>R$ {{ "%.2f"|format(caixa.saldo_atual) if caixa else "0,00" }}</span>
+        </div>
+    </div>
 
-    if(
-        !confirm(
-            "Deseja realmente fechar o caixa?"
-        )
-    ){
-        return false;
-    }
+    <div style="border-top: 1px dashed #000; margin-top: 12px; padding-top: 8px; text-align: center;">
+        <p style="margin: 0; font-size: 10px;">-- FIM DO RELATÓRIO --</p>
+    </div>
+</div>
 
-    document
-    .getElementById("titulo-popup-caixa")
-    .innerText = "Caixa Fechado!";
-
-    document
-    .getElementById("texto-popup-caixa")
-    .innerText = "Salvando fechamento do caixa...";
-
-    document
-    .getElementById("popup-caixa")
-    .classList.add("mostrar-popup");
-
-    setTimeout(() => {
-
-        document
-        .getElementById("form-fechar-caixa")
-        .submit();
-
-    }, 1500);
-
-    return false;
-}
-
-function abrirCaixa(event){
-
-    event.preventDefault();
-
-    document
-    .getElementById("titulo-popup-caixa")
-    .innerText = "Caixa Aberto!";
-
-    document
-    .getElementById("texto-popup-caixa")
-    .innerText = "Iniciando o caixa do dia...";
-
-    document
-    .getElementById("popup-caixa")
-    .classList.add("mostrar-popup");
-
-    setTimeout(() => {
-
-        document
-        .getElementById("form-abrir-caixa")
-        .submit();
-
-    }, 1500);
-
-    return false;
-}
-
-</script>
 <script src="{{ url_for('static', filename='sidebar.js') }}"></script>
 </body>
 </html>

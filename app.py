@@ -77,7 +77,11 @@ class Venda(db.Model):
     valor_total = db.Column(db.Float, nullable=False)
     data = db.Column(db.String(20)) # Ex: "09/07/2026 14:15"
     produtos_vendidos = db.Column(db.Text, nullable=False) # Itens da venda em JSON
-    pagamento = db.Column(db.String(50), nullable=True) # 🌟 NOVA COLUNA PROFISSIONAL!
+    pagamento = db.Column(db.String(50), nullable=True)
+    
+    # 🌟 NOVOS CAMPOS PARA CANCELAMENTO/ESTORNO:
+    status = db.Column(db.String(20), default='CONCLUIDA') # 'CONCLUIDA' ou 'CANCELADA'
+    motivo_cancelamento = db.Column(db.Text, nullable=True) # Ex: "Cliente desistiu da compra"
 
 class Troca(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -448,7 +452,7 @@ def dashboard():
     caixa_atual = Caixa.query.filter_by(usuario_id=id_logado, aberto=True).first()
     
     total_vendas_periodo = 0
-    valor_total_caixa = 0
+    valor_total_caixa = 0.0
     ultimas_vendas_lista = []
 
     # Variáveis para o resumo da notinha (do caixa atual)
@@ -461,11 +465,18 @@ def dashboard():
         # Busca todas as vendas que pertencem ao caixa que está aberto atualmente
         vendas_caixa = Venda.query.filter_by(usuario_id=id_logado, caixa_id=caixa_atual.id).all()
         total_vendas_periodo = len(vendas_caixa)
-        valor_total_caixa = caixa_atual.valor_inicial + caixa_atual.vendas_periodo
+        
+        # 🟢 CÁLCULO DAS DESPESAS DO CAIXA
+        # Soma todas as despesas lançadas cuja origem seja 'caixa'
+        total_despesas_caixa = sum(
+            d['valor'] for d in despesas_db if d.get('origem') == 'caixa'
+        )
+
+        # Saldo Líquido do Caixa = Inicial + Vendas - Despesas
+        valor_total_caixa = (caixa_atual.valor_inicial + caixa_atual.vendas_periodo) - total_despesas_caixa
 
         # Soma os totais por forma de pagamento no caixa atual
         for v in vendas_caixa:
-            # Tenta pegar o campo de pagamento (se existir no modelo)
             metodo = str(getattr(v, 'pagamento', getattr(v, 'forma_pagamento', 'dinheiro'))).lower()
             valor = float(v.valor_total or 0)
 
@@ -478,7 +489,7 @@ def dashboard():
             else:
                 total_dinheiro += valor
 
-        # Pega as últimas 5 vendas do período atual (da mais recente para a mais antiga)
+        # Pega as últimas 5 vendas do período atual
         for v in reversed(vendas_caixa):
             if len(ultimas_vendas_lista) < 5:
                 try:
@@ -801,7 +812,6 @@ def historico():
     if not id_logado:
         return redirect("/")
 
-    # 1. Busca todas as vendas do usuário logado no SQLite (mais recentes primeiro)
     vendas_db = Venda.query.filter_by(usuario_id=id_logado).all()
     vendas_formatadas = []
     
@@ -811,18 +821,15 @@ def historico():
         except:
             itens = []
 
-        # 🌟 Trata e formata a forma de pagamento (seja JSON, Pagamento Misto ou Texto simples)
         pgto_raw = v.pagamento or "Não informado"
         pgto_exibicao = pgto_raw
 
         try:
             pgto_json = json.loads(pgto_raw)
             if isinstance(pgto_json, list):
-                # Converte o JSON [{"tipo": "Pix", "valor": 20.0}, ...] em "Pix: R$ 20.00 | Débito: R$ 30.00"
                 partes = [f"{p.get('tipo', 'Forma')}: R$ {float(p.get('valor', 0)):.2f}" for p in pgto_json]
                 pgto_exibicao = " | ".join(partes)
         except (json.JSONDecodeError, TypeError):
-            # Mantém o texto como está se não for um JSON válido (ex: "Pix", "Pagamento Misto", etc.)
             pgto_exibicao = pgto_raw
             
         vendas_formatadas.append({
@@ -830,14 +837,14 @@ def historico():
             "total": v.valor_total,
             "data": v.data,
             "itens": itens,
-            "pagamento": pgto_exibicao # 🌟 Retorna a string pronta e formatada!
+            "pagamento": pgto_exibicao,
+            "status": getattr(v, 'status', 'CONCLUIDA') or 'CONCLUIDA',
+            "motivo_cancelamento": getattr(v, 'motivo_cancelamento', '') or ''
         })
 
-    # 2. Busca o faturamento do caixa atual do SQLite para exibir o "total"
     caixa_atual = Caixa.query.filter_by(usuario_id=id_logado, aberto=True).first()
     faturamento_caixa = caixa_atual.vendas_periodo if caixa_atual else 0.0
 
-    # 3. Busca todas as trocas do usuário logado no SQLite (mais recentes primeiro)
     trocas_db = Troca.query.filter_by(usuario_id=id_logado).all()
     trocas_formatadas = []
 
@@ -868,6 +875,56 @@ def historico():
         trocas=trocas_formatadas, 
         total=faturamento_caixa
     )
+
+
+@app.route('/cancelar-venda/<int:venda_id>', methods=['POST'])
+def cancelar_venda(venda_id):
+    id_logado = session.get("usuario_id")
+    if not id_logado:
+        return redirect("/")
+
+    venda = Venda.query.filter_by(id=venda_id, usuario_id=id_logado).first()
+    if not venda:
+        return "Venda não encontrada", 404
+
+    if getattr(venda, 'status', '') == 'CANCELADA':
+        return "Venda já cancelada", 400
+
+    motivo = request.form.get('motivo') or "Motivo não informado"
+
+    # 1. Devolve os itens para o Estoque
+    try:
+        if venda.produtos_vendidos:
+            itens = json.loads(venda.produtos_vendidos) if isinstance(venda.produtos_vendidos, str) else venda.produtos_vendidos
+            
+            for item in itens:
+                nome_prod = item.get('produto') or item.get('nome')
+                qtd = int(item.get('quantidade', 1))
+
+                produto = Produto.query.filter_by(nome=nome_prod, usuario_id=id_logado).first()
+                if produto:
+                    produto.estoque += qtd
+                    print(f"✅ Estoque devolvido: {produto.nome} +{qtd}")
+    except Exception as e:
+        print(f"❌ Erro ao estornar estoque: {e}")
+
+    # 2. Pega o valor real da venda (trata valor_total ou total)
+    valor_venda = getattr(venda, 'valor_total', None) or getattr(venda, 'total', 0.0) or 0.0
+
+    # 3. Subtrai o valor APENAS do caixa aberto
+    caixa_atual = Caixa.query.filter_by(usuario_id=id_logado, aberto=True).first()
+    if caixa_atual and valor_venda > 0:
+        # Só desconta do caixa se o valor atual for suficiente
+        caixa_atual.vendas_periodo = max(0.0, float(caixa_atual.vendas_periodo or 0.0) - float(valor_venda))
+        print(f"💰 R$ {valor_venda} subtraído do caixa atual! Novo total: {caixa_atual.vendas_periodo}")
+
+    # 4. Atualiza o Status da Venda
+    venda.status = 'CANCELADA'
+    venda.motivo_cancelamento = motivo
+
+    db.session.commit()
+    return "OK", 200
+
 
 def processar_totais_pagamento(vendas_lista):
     """Lê as vendas (seja misto ou único) e devolve a soma exata por tipo de pagamento"""
@@ -931,6 +988,10 @@ def relatorio_financeiro():
     vendas_filtradas = []
 
     for venda in todas_vendas:
+        # 🚫 Ignora vendas canceladas
+        if getattr(venda, 'status', '') == 'CANCELADA':
+            continue
+
         try:
             data_venda = datetime.strptime(venda.data, "%d/%m/%Y %H:%M")
         except (ValueError, TypeError):
@@ -949,21 +1010,21 @@ def relatorio_financeiro():
             if data_venda.year == hoje.year:
                 vendas_filtradas.append(venda)
 
-    total = sum(v.valor_total for v in vendas_filtradas)
+    total = sum(getattr(v, 'valor_total', 0) or getattr(v, 'total', 0) for v in vendas_filtradas)
     
-    # 🌟 Processa os meios de pagamento separando pagamentos mistos!
+    # Processa pagamentos apenas das vendas ativas
     pix, dinheiro, cartao = processar_totais_pagamento(vendas_filtradas)
 
-    # Cálculo do Lucro
+    # Cálculo do Lucro apenas de vendas ativas
     lucro = 0.0
     for venda in vendas_filtradas:
         try:
-            itens = json.loads(venda.produtos_vendidos)
+            itens = json.loads(venda.produtos_vendidos) if isinstance(venda.produtos_vendidos, str) else venda.produtos_vendidos
         except:
             itens = []
 
         for item in itens:
-            nome_prod = item.get("produto")
+            nome_prod = item.get("produto") or item.get("nome")
             qtd = item.get("quantidade", 0)
             preco_venda_item = item.get("preco_unitario", 0.0)
 
@@ -981,6 +1042,46 @@ def relatorio_financeiro():
         filtro=filtro
     )
 
+@app.route("/relatorio-caixa")
+def relatorio_caixa():
+    id_logado = session.get("usuario_id")
+    if not id_logado:
+        return redirect("/")
+
+    # Busca os últimos 100 caixas do usuário logado
+    caixas_db = Caixa.query.filter_by(usuario_id=id_logado).order_by(Caixa.id.desc()).limit(100).all()
+
+    historico_caixa = []
+    for c in caixas_db:
+        inicial = c.valor_inicial or 0.0
+        final = c.saldo_final or 0.0
+
+        # Tenta capturar o total de vendas registrado no caixa
+        val_vendas = getattr(c, 'vendas_periodo', None) or getattr(c, 'total_vendas', None) or getattr(c, 'vendas', 0.0)
+
+        # Se o caixa foi fechado e tinha saldo, mas as vendas ficaram zeradas, calcula a diferença
+        if (not val_vendas or val_vendas == 0) and final > 0:
+            val_vendas = max(0.0, final - inicial)
+
+        # Formatação das Datas
+        abertura = c.data_abertura.strftime("%d/%m/%Y %H:%M") if hasattr(c.data_abertura, 'strftime') else (c.data_abertura or "N/A")
+        
+        fechamento = "Em Aberto 🟢"
+        if c.data_fechamento and str(c.data_fechamento) != "None":
+            fechamento = c.data_fechamento.strftime("%d/%m/%Y %H:%M") if hasattr(c.data_fechamento, 'strftime') else c.data_fechamento
+
+        historico_caixa.append({
+            "data_abertura": abertura,
+            "data_fechamento": fechamento,
+            "valor_inicial": inicial,
+            "vendas": val_vendas,
+            "saldo_final": final
+        })
+
+    return render_template(
+        "relatorio_caixa.html",
+        historico_caixa=historico_caixa
+    )
 
 @app.route("/relatorio-graficos")
 @apenas_admin
@@ -992,9 +1093,12 @@ def relatorio_graficos():
     filtro = request.args.get("filtro", "semana")
     hoje = datetime.now()
 
-    vendas_db = Venda.query.filter_by(usuario_id=id_logado).all()
+    todas_vendas = Venda.query.filter_by(usuario_id=id_logado).all()
+    
+    # 🚫 Filtra apenas vendas ativas para os gráficos
+    vendas_db = [v for v in todas_vendas if getattr(v, 'status', '') != 'CANCELADA']
 
-    # 🌟 Calcula Pix, Dinheiro e Cartão de forma exata para o gráfico de pizza/rosca!
+    # Meios de pagamento exatos (Pizza/Rosca)
     pix, dinheiro, cartao = processar_totais_pagamento(vendas_db)
 
     vendas_por_periodo = defaultdict(float)
@@ -1005,19 +1109,21 @@ def relatorio_graficos():
         except:
             continue
 
+        val_venda = getattr(venda, 'valor_total', 0) or getattr(venda, 'total', 0)
+
         if filtro == "semana":
             if data_venda.isocalendar()[1] == hoje.isocalendar()[1] and data_venda.year == hoje.year:
                 chave = data_venda.strftime("%d/%m")
-                vendas_por_periodo[chave] += venda.valor_total
+                vendas_por_periodo[chave] += val_venda
         elif filtro == "mes":
             if data_venda.month == hoje.month and data_venda.year == hoje.year:
                 chave = data_venda.strftime("%d")
-                vendas_por_periodo[chave] += venda.valor_total
+                vendas_por_periodo[chave] += val_venda
         elif filtro == "ano":
             if data_venda.year == hoje.year:
                 meses = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"]
                 chave = meses[data_venda.month - 1]
-                vendas_por_periodo[chave] += venda.valor_total
+                vendas_por_periodo[chave] += val_venda
 
     ordem_meses = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"]
 
@@ -1040,7 +1146,8 @@ def relatorio_graficos():
         if data_venda.isocalendar()[1] == semana_atual and data_venda.year == hoje.year:
             dia = data_venda.weekday()
             dias_nomes = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"]
-            dias_semana[dias_nomes[dia]] += venda.valor_total
+            val_venda = getattr(venda, 'valor_total', 0) or getattr(venda, 'total', 0)
+            dias_semana[dias_nomes[dia]] += val_venda
 
     return render_template(
         "relatorio_graficos.html",
@@ -1053,54 +1160,6 @@ def relatorio_graficos():
         dias_semana=list(dias_semana.keys()),
         valores_semana=list(dias_semana.values())
     )
-
-
-@app.route("/relatorio-caixa")
-def relatorio_caixa():
-    id_logado = session.get("usuario_id")
-    if not id_logado:
-        return redirect("/")
-
-    caixas_db = Caixa.query.filter_by(usuario_id=id_logado).order_by(Caixa.id.desc()).limit(100).all()
-
-    historico_caixa = []
-    for c in caixas_db:
-        # 1. Pega os valores registrados
-        inicial = c.valor_inicial or 0.0
-        final = c.saldo_final or 0.0
-
-        # 2. Tenta pegar o valor de vendas direto do caixa
-        val_vendas = getattr(c, 'total_vendas', None)
-        if val_vendas is None:
-            val_vendas = getattr(c, 'vendas', None)
-
-        # 3. SE O VALOR DE VENDAS ESTIVER ZERADO / NONE:
-        # Se o caixa tem saldo final, calcula pela diferença: (Saldo Final - Valor Inicial)
-        if (not val_vendas or val_vendas == 0) and final > 0:
-            val_vendas = max(0.0, final - inicial)
-        elif not val_vendas:
-            val_vendas = 0.0
-
-        # Formatação das Datas
-        abertura = c.data_abertura.strftime("%d/%m/%Y %H:%M") if hasattr(c.data_abertura, 'strftime') else (c.data_abertura or "N/A")
-        
-        fechamento = "Em Aberto 🟢"
-        if c.data_fechamento and str(c.data_fechamento) != "None":
-            fechamento = c.data_fechamento.strftime("%d/%m/%Y %H:%M") if hasattr(c.data_fechamento, 'strftime') else c.data_fechamento
-
-        historico_caixa.append({
-            "data_abertura": abertura,
-            "data_fechamento": fechamento,
-            "valor_inicial": inicial,
-            "vendas": val_vendas,
-            "saldo_final": final
-        })
-
-    return render_template(
-        "relatorio_caixa.html",
-        historico_caixa=historico_caixa
-    )
-
 
 
 @app.route("/relatorio-produtos")
@@ -1116,13 +1175,17 @@ def relatorio_produtos():
     produtos_lucro = {}
 
     for venda in vendas_db:
+        # 🚫 Ignora produtos de vendas canceladas
+        if getattr(venda, 'status', '') == 'CANCELADA':
+            continue
+
         try:
-            itens = json.loads(venda.produtos_vendidos)
+            itens = json.loads(venda.produtos_vendidos) if isinstance(venda.produtos_vendidos, str) else venda.produtos_vendidos
         except:
             itens = []
 
         for item in itens:
-            nome = item.get("produto")
+            nome = item.get("produto") or item.get("nome")
             quantidade = item.get("quantidade", 0)
             preco_venda_item = item.get("preco_unitario", 0.0)
 
@@ -1268,16 +1331,21 @@ def lucro():
         else:
             produtos_sem_custo.append(prod_dict)
 
-    # 2. Busca todas as vendas do usuário no SQLite para calcular o lucro total
+    # 2. Busca todas as vendas do usuário no SQLite
     vendas_db = Venda.query.filter_by(usuario_id=id_logado).all()
     for venda in vendas_db:
+        
+        # 🚫 IGNORA VENDAS CANCELADAS NO CÁLCULO DO LUCRO
+        if getattr(venda, 'status', '') == 'CANCELADA':
+            continue
+
         try:
-            itens = json.loads(venda.produtos_vendidos)
+            itens = json.loads(venda.produtos_vendidos) if isinstance(venda.produtos_vendidos, str) else venda.produtos_vendidos
         except:
             itens = []
 
         for item in itens:
-            nome_produto = item.get("produto")
+            nome_produto = item.get("produto") or item.get("nome")
             quantidade = item.get("quantidade", 0)
             preco_venda = item.get("preco_unitario", 0.0)
 
@@ -1289,9 +1357,6 @@ def lucro():
             if preco_custo > 0:
                 lucro_item = (preco_venda - preco_custo) * quantidade
                 lucro_total += lucro_item
-            else:
-                # Se não tem custo cadastrado, o lucro desse item vira ZERO
-                lucro_total += 0
 
     return render_template(
         "lucro.html",
@@ -1299,6 +1364,52 @@ def lucro():
         produtos_com_custo=produtos_com_custo,
         produtos_sem_custo=produtos_sem_custo
     )
+
+
+
+
+
+# 1. DECLARE A LISTA AQUI (FORA E ANTES DA FUNÇÃO)
+despesas_db = []
+
+@app.route('/despesas', methods=['GET', 'POST'])
+def despesas():
+    global despesas_db, caixa
+    
+    if request.method == 'POST':
+        descricao = request.form.get('descricao')
+        valor = float(request.form.get('valor', 0))
+        categoria = request.form.get('categoria')
+        origem_pagamento = request.form.get('origem_pagamento')
+        
+        nova_despesa = {
+            'id': len(despesas_db) + 1,
+            'descricao': descricao,
+            'valor': valor,
+            'categoria': categoria,
+            'origem': origem_pagamento,
+            'data': datetime.now().strftime('%d/%m/%Y %H:%M')
+        }
+        
+        despesas_db.append(nova_despesa)
+        
+        # 🟢 ABATE DIRETO NO CAIXA DA LOJA (SANGRIA)
+        if origem_pagamento == 'caixa' and 'caixa' in globals() and isinstance(caixa, dict):
+            if caixa.get('aberto'):
+                # Garante que o campo de despesas do caixa exista
+                if 'despesas' not in caixa:
+                    caixa['despesas'] = 0.0
+                
+                # Registra o valor retirado
+                caixa['despesas'] += valor
+
+        flash('Despesa registrada com sucesso!', 'sucesso')
+        return redirect(url_for('despesas'))
+
+    total_despesas = sum(d['valor'] for d in despesas_db)
+    return render_template('despesas.html', despesas=despesas_db, total_despesas=total_despesas)
+
+
 
 @app.route("/gestao")
 @apenas_admin
@@ -1454,29 +1565,41 @@ def caixa():
     # Busca o último caixa registrado do usuário
     ultimo_caixa = Caixa.query.filter_by(usuario_id=id_logado).order_by(Caixa.id.desc()).first()
 
-    # Se o banco estiver zerado ou o último caixa já tiver data de fechamento,
-    # criamos um dicionário padrão estruturado como "fechado" para o HTML não quebrar
+    # Calcula o total de despesas pagas em dinheiro através do caixa
+    # (Filtra todas as despesas globais cuja origem seja 'caixa')
+    total_despesas_caixa = sum(
+        d['valor'] for d in despesas_db if d.get('origem') == 'caixa'
+    )
+
     if not ultimo_caixa or ultimo_caixa.data_fechamento:
         caixa_formatado = {
             "aberto": False,
             "valor_inicial": 0.0,
             "vendas_periodo": 0.0,
+            "despesas": 0.0,
+            "saldo_atual": 0.0,
             "data_abertura": ""
         }
     else:
-        # Se achou um caixa sem data de fechamento, ele está aberto!
+        # Saldo = Inicial + Vendas - Despesas do Caixa
+        saldo_calculado = (ultimo_caixa.valor_inicial + ultimo_caixa.vendas_periodo) - total_despesas_caixa
+        
         caixa_formatado = {
             "aberto": True,
             "valor_inicial": ultimo_caixa.valor_inicial,
             "vendas_periodo": ultimo_caixa.vendas_periodo,
+            "despesas": total_despesas_caixa,
+            "saldo_atual": saldo_calculado,
             "data_abertura": ultimo_caixa.data_abertura
         }
 
     return render_template("caixa.html", caixa=caixa_formatado)
 
-# ROTA DE ABRIR CAIXA (ADICIONADO O FLASH)
+# ROTA DE ABRIR CAIXA
 @app.route("/abrir-caixa", methods=["POST"])
 def abrir_caixa():
+    global despesas_db  # Acessa a lista de despesas
+    
     id_logado = session.get("usuario_id")
     if not id_logado:
         return redirect("/")
@@ -1495,16 +1618,19 @@ def abrir_caixa():
     db.session.add(novo_caixa)
     db.session.commit()
 
-    # 👇 ESSA LINHA TRARÁ A MENSAGEM DE ABERTURA DE VOLTA
-    flash("🔓 Caixa aberto com sucesso!", "success")
+    # Zera as despesas para o novo turno que está começando
+    despesas_db.clear()
 
+    flash("🔓 Caixa aberto com sucesso!", "success")
     print(f"💰 CAIXA ABERTO COM R$ {valor} PARA O USUÁRIO {id_logado}")
     return redirect("/caixa")
 
 
-# ROTA DE FECHAR CAIXA (GARANTINDO O FLASH)
+# ROTA DE FECHAR CAIXA
 @app.route("/fechar-caixa", methods=["POST"])
 def fechar_caixa():
+    global despesas_db
+    
     id_logado = session.get("usuario_id")
     if not id_logado:
         return redirect("/")
@@ -1512,19 +1638,19 @@ def fechar_caixa():
     caixa_atual = Caixa.query.filter_by(usuario_id=id_logado, data_fechamento=None).order_by(Caixa.id.desc()).first()
 
     if caixa_atual:
-        saldo_final = caixa_atual.valor_inicial + caixa_atual.vendas_periodo
+        total_despesas_caixa = sum(d['valor'] for d in despesas_db if d.get('origem') == 'caixa')
+        saldo_final = (caixa_atual.valor_inicial + caixa_atual.vendas_periodo) - total_despesas_caixa
+        
         caixa_atual.aberto = False
         caixa_atual.saldo_final = saldo_final
         caixa_atual.data_fechamento = datetime.now().strftime("%d/%m/%Y %H:%M")
         
         db.session.commit()
         
-        # 👇 ESSA LINHA TRARÁ A MENSAGEM DE FECHAMENTO DE VOLTA
         flash("🔒 Caixa fechado com sucesso!", "success") 
         print(f"🔒 CAIXA FECHADO COM SUCESSO. SALDO FINAL: R$ {saldo_final}")
 
     return redirect("/caixa")
-
 
 
 if __name__ == "__main__":
