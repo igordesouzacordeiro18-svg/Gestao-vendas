@@ -1653,39 +1653,48 @@ def fechar_caixa():
     return redirect("/caixa")
 
 
+# =========================================================
+# INICIALIZAÇÃO DO BANCO & MIGRAÇÕES (RODA NO RENDER E LOCAL)
+# =========================================================
+with app.app_context():
+    db.create_all()
+
+    from sqlalchemy import text
+    from werkzeug.security import generate_password_hash
+    from datetime import datetime, timedelta
+
+    # 1. Migração de Colunas Faltantes na tabela 'venda'
+    try:
+        db.session.execute(text("ALTER TABLE venda ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'concluida';"))
+        db.session.execute(text("ALTER TABLE venda ADD COLUMN IF NOT EXISTS motivo_cancelamento TEXT;"))
+        db.session.commit()
+        print("✅ Migração de colunas executada com sucesso!")
+    except Exception as e:
+        db.session.rollback()
+        print(f"⚠️ Aviso/Erro na migração: {e}")
+
+    # 2. Criador automático de Admin
+    seu_email_real = "igordesouzacordeiro18@gmail.com"
+    sua_senha_real = "123123"
+
+    admin_antigo = Usuario.query.filter_by(email="admin@teste.com").first()
+    if admin_antigo:
+        db.session.delete(admin_antigo)
+        db.session.commit()
+
+    if not Usuario.query.filter_by(email=seu_email_real).first():
+        admin = Usuario(
+            email=seu_email_real, 
+            senha=generate_password_hash(sua_senha_real), 
+            primeiro_acesso=False, 
+            status="ativo",
+            validade_plano=datetime.now() + timedelta(days=365)
+        )
+        db.session.add(admin)
+        db.session.commit()
+        print(f"🚀 SEU USUÁRIO FOI CRIADO COM SUCESSO: {seu_email_real}")
+
+
+# Executado apenas ao rodar localmente via linha de comando
 if __name__ == "__main__":
-    # Criador automático de Admin
-    with app.app_context():
-
-        #"Se as tabelas não existirem no arquivo .db, crie-as agora!"
-        db.create_all()
-
-        from werkzeug.security import generate_password_hash
-        from datetime import datetime, timedelta
-        
-        # ⚠️ SUBSTITUA COM OS SEUS DADOS REAIS ABAIXO:
-        seu_email_real = "igordesouzacordeiro18@gmail.com"
-        sua_senha_real = "123123"
-        
-        # Se o admin antigo com erro estiver lá, removemos ele
-        admin_antigo = Usuario.query.filter_by(email="admin@teste.com").first()
-        if admin_antigo:
-            db.session.delete(admin_antigo)
-            db.session.commit()
-        
-        # Cria a sua conta real se ela não existir no banco novo
-        if not Usuario.query.filter_by(email=seu_email_real).first():
-            admin = Usuario(
-                email=seu_email_real, 
-                senha=generate_password_hash(sua_senha_real), 
-                primeiro_acesso=False, # Admin entra direto sem travar
-                status="ativo",
-                validade_plano=datetime.now() + timedelta(days=365) # Plano ativo por 1 ano
-            )
-            db.session.add(admin)
-            db.session.commit()
-            print(f"🚀 SEU USUÁRIO FOI CRIADO COM SUCESSO: {seu_email_real}")
-
-    # 🌐 ATUALIZADO: Aceita conexões de outros aparelhos na mesma rede Wi-Fi
     app.run(host='0.0.0.0', port=5000, debug=True)
-
