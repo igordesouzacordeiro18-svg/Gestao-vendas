@@ -28,9 +28,10 @@
                 width: 220px !important; /* Largura perfeita para bobina 58mm */
                 max-width: 220px !important;
                 font-family: 'Courier New', Courier, monospace !important;
-                font-size: 13px !important;
+                font-size: 12px !important;
                 color: #000 !important;
                 background: #fff !important;
+                line-height: 1.2 !important;
             }
         }
     </style>
@@ -110,76 +111,114 @@
     </div>
 </div>
 
-<!-- COMPROVANTE DETALHADO PARA IMPRESSORA TÉRMICA -->
+<!-- COMPROVANTE DETALHADO IDENTICO À FOTO -->
 <div id="comprovante-impressao">
-    <div style="text-align: center; margin-bottom: 8px;">
-        <h2 style="margin: 0; font-size: 15px; font-weight: bold; text-transform: uppercase;">RESUMO DE CAIXA</h2>
-        <p style="margin: 2px 0; font-size: 11px;">Operador: {{ caixa.operador if caixa.operador else 'Caixa' }}</p>
-        <p style="margin: 2px 0; font-size: 11px;">Abertura: {{ caixa.data_abertura if caixa else '' }}</p>
-        <p style="margin: 2px 0; font-size: 11px;">Fechamento: {{ data_atual if data_atual else "28/07/2026" }}</p>
+    <!-- TITULO CENTRALIZADO -->
+    <div style="text-align: center; font-size: 14px; font-weight: bold; margin-bottom: 6px;">
+        RESUMO DE CAIXA
     </div>
 
-    <!-- TOTAIS GERAIS -->
-    <div style="border-top: 1px dashed #000; padding-top: 6px; margin-top: 6px;">
+    <!-- CABEÇALHO -->
+    <div style="font-size: 11px; margin-bottom: 4px;">
         <div style="display: flex; justify-content: space-between;">
-            <span>Total Vendido (+)</span>
-            <strong>R$ {{ "%.2f"|format(caixa.vendas_periodo) if caixa else "0.00" }}</strong>
-        </div>
-
-        <!-- LOOP DAS FORMAS DE PAGAMENTO NO RESUMO DE TOPO -->
-        {% if caixa and caixa.vendas_por_forma %}
-            {% for forma, valor in caixa.vendas_por_forma.items() %}
-            <div style="display: flex; justify-content: space-between; padding-left: 8px; font-size: 12px;">
-                <span>{{ forma.upper() }}</span>
-                <span>R$ {{ "%.2f"|format(valor) }}</span>
-            </div>
-            {% endfor %}
-        {% endif %}
-
-        <div style="display: flex; justify-content: space-between; margin-top: 4px;">
-            <span>Entradas/Início (+)</span>
-            <strong>R$ {{ "%.2f"|format(caixa.valor_inicial) if caixa else "0.00" }}</strong>
+            <span>Caixa</span>
+            <span>{{ caixa.operador if caixa and caixa.operador else 'Ingrid' }}</span>
         </div>
         <div style="display: flex; justify-content: space-between;">
-            <span>Retiradas/Despesas (-)</span>
-            <strong>R$ {{ "%.2f"|format(caixa.despesas) if caixa else "0.00" }}</strong>
+            <span>Modelo do dispositivo</span>
+            <span>{{ caixa.dispositivo if caixa and caixa.dispositivo else 'D1' }}</span>
+        </div>
+        <div style="display: flex; justify-content: space-between;">
+            <span>Abertura</span>
+            <span>{{ caixa.data_abertura if caixa else '' }}</span>
+        </div>
+        <div style="display: flex; justify-content: space-between;">
+            <span>Fechamento</span>
+            <span>{{ data_atual if data_atual else '' }}</span>
         </div>
     </div>
 
-    <!-- SALDO FINAL -->
-    <div style="border-top: 1px dashed #000; margin-top: 6px; padding-top: 6px;">
-        <div style="display: flex; justify-content: space-between; font-weight: bold; font-size: 14px;">
+    <div style="border-top: 1px dashed #000; margin: 4px 0;"></div>
+
+    <!-- RESUMO DOS TOTAIS -->
+    <div style="font-size: 12px;">
+        <div style="display: flex; justify-content: space-between;">
+            <span>Total vendido (+)</span>
+            <span>R$ {{ "%.2f"|format(caixa.vendas_periodo) if caixa else "0.00" }}</span>
+        </div>
+
+        <!-- FORMAS DE PAGAMENTO NO TOPO -->
+        {% set formas_topo = caixa.vendas_por_forma if (caixa and caixa.vendas_por_forma) else {
+            'DINHEIRO': caixa.vendas_periodo if caixa else 0.0,
+            'DÉBITO': 0.0,
+            'CRÉDITO': 0.0,
+            'CRÉDITO PARCELADO': 0.0,
+            'PIX': 0.0
+        } %}
+
+        {% for forma, valor in formas_topo.items() %}
+        <div style="display: flex; justify-content: space-between; padding-left: 12px; font-size: 11px;">
+            <span>{{ forma.upper() }}</span>
+            <span>R$ {{ "%.2f"|format(valor) }}</span>
+        </div>
+        {% endfor %}
+
+        <div style="display: flex; justify-content: space-between;">
+            <span>Recebimentos (+)</span>
+            <span>R$ {{ "%.2f"|format(caixa.recebimentos|default(0.0)) if caixa else "0.00" }}</span>
+        </div>
+        <div style="display: flex; justify-content: space-between;">
+            <span>Entradas (+)</span>
+            <span>R$ {{ "%.2f"|format(caixa.valor_inicial) if caixa else "0.00" }}</span>
+        </div>
+        <div style="display: flex; justify-content: space-between;">
+            <span>Taxa de serviço (+)</span>
+            <span>R$ {{ "%.2f"|format(caixa.taxa_servico|default(0.0)) if caixa else "0.00" }}</span>
+        </div>
+        <div style="display: flex; justify-content: space-between;">
+            <span>Retiradas (-)</span>
+            <span>R$ {{ "%.2f"|format(caixa.despesas) if caixa else "0.00" }}</span>
+        </div>
+        <div style="display: flex; justify-content: space-between;">
+            <span>Vendas fiado (-)</span>
+            <span>R$ {{ "%.2f"|format(caixa.vendas_fiado|default(0.0)) if caixa else "0.00" }}</span>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; font-weight: bold; font-size: 12px; margin-top: 2px;">
             <span>Saldo (=)</span>
             <span>R$ {{ "%.2f"|format(caixa.saldo_atual) if caixa else "0.00" }}</span>
         </div>
     </div>
 
-    <!-- DETALHAMENTO DE CADA FORMA DE PAGAMENTO -->
-    {% if caixa and caixa.detalhes_formas %}
-        <div style="border-top: 1px dashed #000; margin-top: 10px; padding-top: 8px;">
-            {% for item in caixa.detalhes_formas %}
-                <div style="margin-bottom: 8px;">
-                    <strong style="text-transform: uppercase; text-decoration: underline;">{{ item.nome }}</strong>
-                    <div style="display: flex; justify-content: space-between;">
-                        <span>Entrada (+)</span>
-                        <span>R$ {{ "%.2f"|format(item.entrada) }}</span>
-                    </div>
-                    <div style="display: flex; justify-content: space-between;">
-                        <span>Saída (-)</span>
-                        <span>R$ {{ "%.2f"|format(item.saida) }}</span>
-                    </div>
-                    <div style="display: flex; justify-content: space-between; font-weight: bold;">
-                        <span>Saldo (=)</span>
-                        <span>R$ {{ "%.2f"|format(item.saldo) }}</span>
-                    </div>
-                </div>
-            {% endfor %}
-        </div>
-    {% endif %}
+    <!-- BLOCOS INFERIORES DETALHADOS -->
+    {% set detalhes = caixa.detalhes_formas if (caixa and caixa.detalhes_formas) else [
+        {'nome': 'Dinheiro', 'entrada': (caixa.valor_inicial + caixa.vendas_periodo) if caixa else 0.0, 'saida': caixa.despesas if caixa else 0.0, 'saldo': caixa.saldo_atual if caixa else 0.0},
+        {'nome': 'Débito', 'entrada': 0.0, 'saida': 0.0, 'saldo': 0.0},
+        {'nome': 'Crédito', 'entrada': 0.0, 'saida': 0.0, 'saldo': 0.0},
+        {'nome': 'Crédito Parcelado', 'entrada': 0.0, 'saida': 0.0, 'saldo': 0.0},
+        {'nome': 'Pix', 'entrada': 0.0, 'saida': 0.0, 'saldo': 0.0}
+    ] %}
 
-    <div style="border-top: 1px dashed #000; margin-top: 10px; padding-top: 8px; text-align: center;">
-        <p style="margin: 0; font-size: 10px;">-- FIM DO RELATÓRIO --</p>
+    {% for item in detalhes %}
+    <div style="border-top: 1px dashed #000; margin-top: 6px; padding-top: 4px; font-size: 11px;">
+        <div style="text-align: center; font-weight: bold; margin-bottom: 2px;">
+            {{ item.nome }}
+        </div>
+        <div style="display: flex; justify-content: space-between;">
+            <span>Entrada (+)</span>
+            <span>R$ {{ "%.2f"|format(item.entrada) }}</span>
+        </div>
+        <div style="display: flex; justify-content: space-between;">
+            <span>Saída (-)</span>
+            <span>R$ {{ "%.2f"|format(item.saida) }}</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; font-weight: bold;">
+            <span>Saldo (=)</span>
+            <span>R$ {{ "%.2f"|format(item.saldo) }}</span>
+        </div>
     </div>
+    {% endfor %}
+
 </div>
 
 <script src="{{ url_for('static', filename='sidebar.js') }}"></script>

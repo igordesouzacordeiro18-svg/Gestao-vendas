@@ -1602,10 +1602,10 @@ def caixa():
     if not id_logado:
         return redirect("/")
 
-    # Busca o último caixa registrado do usuário
+    # Busca o último caixa do usuário
     ultimo_caixa = Caixa.query.filter_by(usuario_id=id_logado).order_by(Caixa.id.desc()).first()
 
-    # Calcula o total de despesas pagas em dinheiro através do caixa
+    # Total de despesas/sangrias
     total_despesas_caixa = sum(
         d['valor'] for d in despesas_db if d.get('origem') == 'caixa'
     )
@@ -1618,14 +1618,61 @@ def caixa():
             "despesas": 0.0,
             "saldo_atual": 0.0,
             "data_abertura": "",
-            "operador": "Caixa",
+            "operador": session.get("usuario_nome", "Ingrid"),
+            "dispositivo": "D1",
+            "recebimentos": 0.0,
+            "taxa_servico": 0.0,
+            "vendas_fiado": 0.0,
             "vendas_por_forma": {},
             "detalhes_formas": []
         }
     else:
-        # Saldo = Inicial + Vendas - Despesas do Caixa
+        # Tenta buscar vendas do banco por forma de pagamento (se seu model de Venda existir)
+        vendas_dinheiro = 0.0
+        vendas_debito = 0.0
+        vendas_credito = 0.0
+        vendas_credito_parc = 0.0
+        vendas_pix = 0.0
+
+        try:
+            # Caso tenha tabela Venda vinculada ao caixa_id ou usuario
+            vendas = Venda.query.filter_by(caixa_id=ultimo_caixa.id).all()
+            for v in vendas:
+                f = getattr(v, 'forma_pagamento', '').lower()
+                if 'dinheiro' in f: vendas_dinheiro += v.valor
+                elif 'débito' in f or 'debito' in f: vendas_debito += v.valor
+                elif 'parcelado' in f: vendas_credito_parc += v.valor
+                elif 'crédito' in f or 'credito' in f: vendas_credito += v.valor
+                elif 'pix' in f: vendas_pix += v.valor
+        except Exception:
+            # Caso ainda não tenha o vinculo de Venda por Caixa, usa o total do caixa em dinheiro ou vendas
+            vendas_dinheiro = ultimo_caixa.vendas_periodo
+
+        # Mapeamento do resumo do topo
+        vendas_por_forma = {
+            "DINHEIRO": vendas_dinheiro,
+            "DÉBITO": vendas_debito,
+            "CRÉDITO": vendas_credito,
+            "CRÉDITO PARCELADO": vendas_credito_parc,
+            "PIX": vendas_pix
+        }
+
+        # Detalhamento inferior por forma de pagamento
+        detalhes_formas = [
+            {
+                "nome": "Dinheiro",
+                "entrada": ultimo_caixa.valor_inicial + vendas_dinheiro,
+                "saida": total_despesas_caixa,
+                "saldo": (ultimo_caixa.valor_inicial + vendas_dinheiro) - total_despesas_caixa
+            },
+            {"nome": "Débito", "entrada": vendas_debito, "saida": 0.0, "saldo": vendas_debito},
+            {"nome": "Crédito", "entrada": vendas_credito, "saida": 0.0, "saldo": vendas_credito},
+            {"nome": "Crédito Parcelado", "entrada": vendas_credito_parc, "saida": 0.0, "saldo": vendas_credito_parc},
+            {"nome": "Pix", "entrada": vendas_pix, "saida": 0.0, "saldo": vendas_pix}
+        ]
+
         saldo_calculado = (ultimo_caixa.valor_inicial + ultimo_caixa.vendas_periodo) - total_despesas_caixa
-        
+
         caixa_formatado = {
             "aberto": True,
             "valor_inicial": ultimo_caixa.valor_inicial,
@@ -1633,12 +1680,20 @@ def caixa():
             "despesas": total_despesas_caixa,
             "saldo_atual": saldo_calculado,
             "data_abertura": ultimo_caixa.data_abertura,
-            "operador": session.get("usuario_nome", "Caixa"),
-            "vendas_por_forma": {},
-            "detalhes_formas": []
+            "operador": session.get("usuario_nome", "Ingrid"),
+            "dispositivo": "D1",
+            "recebimentos": 0.0,
+            "taxa_servico": 0.0,
+            "vendas_fiado": 0.0,
+            "vendas_por_forma": vendas_por_forma,
+            "detalhes_formas": detalhes_formas
         }
 
-    return render_template("caixa.html", caixa=caixa_formatado, data_atual=datetime.now().strftime("%d/%m/%Y %H:%M"))
+    return render_template(
+        "caixa.html", 
+        caixa=caixa_formatado, 
+        data_atual=datetime.now().strftime("%d/%m/%Y %H:%M")
+    )
 
 # ROTA DE ABRIR CAIXA
 @app.route("/abrir-caixa", methods=["POST"])
