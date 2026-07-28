@@ -15,18 +15,22 @@
         /* 2. REGRA DE IMPRESSÃO (Mostra só o cupom ao imprimir) */
         @media print {
             body * {
-                visibility: hidden;
+                visibility: hidden !important;
             }
             #comprovante-impressao, #comprovante-impressao * {
-                visibility: visible;
+                visibility: visible !important;
             }
             #comprovante-impressao {
                 display: block !important;
-                position: absolute;
-                left: 0;
-                top: 0;
-                width: 80mm; /* Largura padrão de impressora térmica */
-                font-family: monospace;
+                position: absolute !important;
+                left: 0 !important;
+                top: 0 !important;
+                width: 220px !important; /* Largura perfeita para bobina 58mm */
+                max-width: 220px !important;
+                font-family: 'Courier New', Courier, monospace !important;
+                font-size: 13px !important;
+                color: #000 !important;
+                background: #fff !important;
             }
         }
     </style>
@@ -106,36 +110,74 @@
     </div>
 </div>
 
-<!-- COMPROVANTE OCULTO PARA IMPRESSORA TÉRMICA -->
+<!-- COMPROVANTE DETALHADO PARA IMPRESSORA TÉRMICA -->
 <div id="comprovante-impressao">
-    <div style="text-align: center; margin-bottom: 10px;">
+    <div style="text-align: center; margin-bottom: 8px;">
         <h2 style="margin: 0; font-size: 15px; font-weight: bold; text-transform: uppercase;">RESUMO DE CAIXA</h2>
-        <p style="margin: 2px 0; font-size: 11px;">Data: {{ data_atual if data_atual else "26/07/2026" }}</p>
+        <p style="margin: 2px 0; font-size: 11px;">Operador: {{ caixa.operador if caixa.operador else 'Caixa' }}</p>
+        <p style="margin: 2px 0; font-size: 11px;">Abertura: {{ caixa.data_abertura if caixa else '' }}</p>
+        <p style="margin: 2px 0; font-size: 11px;">Fechamento: {{ data_atual if data_atual else "28/07/2026" }}</p>
     </div>
 
+    <!-- TOTAIS GERAIS -->
     <div style="border-top: 1px dashed #000; padding-top: 6px; margin-top: 6px;">
         <div style="display: flex; justify-content: space-between;">
-            <span>Valor Inicial (+)</span>
-            <strong>R$ {{ "%.2f"|format(caixa.valor_inicial) if caixa else "0,00" }}</strong>
-        </div>
-        <div style="display: flex; justify-content: space-between;">
             <span>Total Vendido (+)</span>
-            <strong>R$ {{ "%.2f"|format(caixa.vendas_periodo) if caixa else "0,00" }}</strong>
+            <strong>R$ {{ "%.2f"|format(caixa.vendas_periodo) if caixa else "0.00" }}</strong>
+        </div>
+
+        <!-- LOOP DAS FORMAS DE PAGAMENTO NO RESUMO DE TOPO -->
+        {% if caixa and caixa.vendas_por_forma %}
+            {% for forma, valor in caixa.vendas_por_forma.items() %}
+            <div style="display: flex; justify-content: space-between; padding-left: 8px; font-size: 12px;">
+                <span>{{ forma.upper() }}</span>
+                <span>R$ {{ "%.2f"|format(valor) }}</span>
+            </div>
+            {% endfor %}
+        {% endif %}
+
+        <div style="display: flex; justify-content: space-between; margin-top: 4px;">
+            <span>Entradas/Início (+)</span>
+            <strong>R$ {{ "%.2f"|format(caixa.valor_inicial) if caixa else "0.00" }}</strong>
         </div>
         <div style="display: flex; justify-content: space-between;">
-            <span>Despesas/Saídas (-)</span>
-            <strong style="color: #000;">R$ {{ "%.2f"|format(caixa.despesas) if caixa else "0,00" }}</strong>
+            <span>Retiradas/Despesas (-)</span>
+            <strong>R$ {{ "%.2f"|format(caixa.despesas) if caixa else "0.00" }}</strong>
         </div>
     </div>
 
-    <div style="border-top: 1px dashed #000; margin-top: 8px; padding-top: 6px;">
-        <div style="display: flex; justify-content: space-between; font-weight: bold;">
-            <span>Saldo Final (=)</span>
-            <span>R$ {{ "%.2f"|format(caixa.saldo_atual) if caixa else "0,00" }}</span>
+    <!-- SALDO FINAL -->
+    <div style="border-top: 1px dashed #000; margin-top: 6px; padding-top: 6px;">
+        <div style="display: flex; justify-content: space-between; font-weight: bold; font-size: 14px;">
+            <span>Saldo (=)</span>
+            <span>R$ {{ "%.2f"|format(caixa.saldo_atual) if caixa else "0.00" }}</span>
         </div>
     </div>
 
-    <div style="border-top: 1px dashed #000; margin-top: 12px; padding-top: 8px; text-align: center;">
+    <!-- DETALHAMENTO DE CADA FORMA DE PAGAMENTO -->
+    {% if caixa and caixa.detalhes_formas %}
+        <div style="border-top: 1px dashed #000; margin-top: 10px; padding-top: 8px;">
+            {% for item in caixa.detalhes_formas %}
+                <div style="margin-bottom: 8px;">
+                    <strong style="text-transform: uppercase; text-decoration: underline;">{{ item.nome }}</strong>
+                    <div style="display: flex; justify-content: space-between;">
+                        <span>Entrada (+)</span>
+                        <span>R$ {{ "%.2f"|format(item.entrada) }}</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between;">
+                        <span>Saída (-)</span>
+                        <span>R$ {{ "%.2f"|format(item.saida) }}</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; font-weight: bold;">
+                        <span>Saldo (=)</span>
+                        <span>R$ {{ "%.2f"|format(item.saldo) }}</span>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    <div style="border-top: 1px dashed #000; margin-top: 10px; padding-top: 8px; text-align: center;">
         <p style="margin: 0; font-size: 10px;">-- FIM DO RELATÓRIO --</p>
     </div>
 </div>
