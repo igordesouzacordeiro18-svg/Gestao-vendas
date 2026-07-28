@@ -1602,10 +1602,6 @@ def caixa():
     if not id_logado:
         return redirect("/")
 
-    # Busca o usuário logado para obter o nome do operador
-    usuario = Usuario.query.get(id_logado)
-    nome_operador = usuario.nome if usuario else "Operador"
-
     # Busca o último caixa registrado do usuário
     ultimo_caixa = Caixa.query.filter_by(usuario_id=id_logado).order_by(Caixa.id.desc()).first()
 
@@ -1622,42 +1618,11 @@ def caixa():
             "despesas": 0.0,
             "saldo_atual": 0.0,
             "data_abertura": "",
-            "operador": nome_operador,
+            "operador": "Caixa",
             "vendas_por_forma": {},
             "detalhes_formas": []
         }
     else:
-        # -------------------------------------------------------------
-        # BUSCA E AGRUPA AS VENDAS POR FORMA DE PAGAMENTO DO TURNO
-        # (Ajuste 'Venda' e 'caixa_id' conforme os nomes do seu model)
-        # -------------------------------------------------------------
-        vendas_turno = Venda.query.filter_by(caixa_id=ultimo_caixa.id).all() if 'caixa_id' in dir(Venda) else []
-        
-        vendas_por_forma = {}
-        for v in vendas_turno:
-            forma = getattr(v, 'forma_pagamento', 'Outros')
-            vendas_por_forma[forma] = vendas_por_forma.get(forma, 0.0) + v.valor
-
-        # Monta a lista detalhada para o cupom
-        detalhes_formas = []
-        for forma, total in vendas_por_forma.items():
-            # Exemplo de regra: Dinheiro entra valor inicial + vendas - despesas
-            if forma.lower() == 'dinheiro':
-                entrada = ultimo_caixa.valor_inicial + total
-                saida = total_despesas_caixa
-                saldo = entrada - saida
-            else:
-                entrada = total
-                saida = 0.0
-                saldo = total
-
-            detalhes_formas.append({
-                "nome": forma,
-                "entrada": entrada,
-                "saida": saida,
-                "saldo": saldo
-            })
-
         # Saldo = Inicial + Vendas - Despesas do Caixa
         saldo_calculado = (ultimo_caixa.valor_inicial + ultimo_caixa.vendas_periodo) - total_despesas_caixa
         
@@ -1668,9 +1633,9 @@ def caixa():
             "despesas": total_despesas_caixa,
             "saldo_atual": saldo_calculado,
             "data_abertura": ultimo_caixa.data_abertura,
-            "operador": nome_operador,
-            "vendas_por_forma": vendas_por_forma,
-            "detalhes_formas": detalhes_formas
+            "operador": session.get("usuario_nome", "Caixa"),
+            "vendas_por_forma": {},
+            "detalhes_formas": []
         }
 
     return render_template("caixa.html", caixa=caixa_formatado, data_atual=datetime.now().strftime("%d/%m/%Y %H:%M"))
