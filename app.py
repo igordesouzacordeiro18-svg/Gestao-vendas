@@ -264,16 +264,13 @@ def bloquear_modo():
 # ROTA PARA DELETAR USUÁRIO (ÁREA ADMIN)
 @app.route("/admin/deletar-usuario/<int:id>", methods=["POST"])
 def admin_deletar_usuario(id):
-    # Verifica se quem tá acessando é admin
     id_logado = session.get("usuario_id")
     usuario_logado = Usuario.query.get(id_logado) if id_logado else None
     
-    # Troque pelo seu e-mail de admin se necessário
     if not usuario_logado or usuario_logado.email != "igordesouzacordeiro18@gmail.com":
         flash("🚫 Acesso não autorizado!", "danger")
         return redirect("/dashboard")
 
-    # Impede que o próprio admin se apague sem querer
     if usuario_logado.id == id:
         flash("⚠️ Você não pode deletar a sua própria conta de Administrador!", "danger")
         return redirect("/admin")
@@ -281,16 +278,22 @@ def admin_deletar_usuario(id):
     usuario_para_deletar = Usuario.query.get_or_404(id)
 
     try:
-        # Apaga os registros vinculados ao usuário
+        # Apaga TODOS os registros vinculados ao usuário em cascata
         Produto.query.filter_by(usuario_id=id).delete()
         Venda.query.filter_by(usuario_id=id).delete()
         Caixa.query.filter_by(usuario_id=id).delete()
         
-        # Apaga o usuário
+        # ⚠️ IMPORTANTE: Limpa trocas e despesas para evitar a quebra de Foreign Key
+        if 'Troca' in globals():
+            Troca.query.filter_by(usuario_id=id).delete()
+        if 'Despesa' in globals():
+            Despesa.query.filter_by(usuario_id=id).delete()
+        
+        # Por fim, apaga o usuário
         db.session.delete(usuario_para_deletar)
         db.session.commit()
 
-        flash(f"🗑️ Usuário {usuario_para_deletar.email} e todos os seus dados foram excluídos!", "success")
+        flash(f"🗑️ Usuário {usuario_para_deletar.email} e todos os seus registros foram excluídos!", "success")
     except Exception as e:
         db.session.rollback()
         flash(f"Erro ao deletar usuário: {e}", "danger")
