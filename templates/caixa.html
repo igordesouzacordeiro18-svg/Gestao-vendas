@@ -7,32 +7,26 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 
     <style>
-        /* 1. ESCONDE O COMPROVANTE NA TELA NORMAL */
         #comprovante-impressao {
             display: none;
         }
 
-        /* 2. REGRA DE IMPRESSÃO */
         @media print {
-            /* Configura a folha do navegador para rolo de impressora térmica */
             @page {
-                size: 58mm auto; /* Força o navegador a reconhecer o papel de 58mm */
-                margin: 0mm;     /* Remove margens brancas gigantes */
+                size: auto;
+                margin: 0;
             }
 
             html, body {
                 width: 100% !important;
                 margin: 0 !important;
                 padding: 0 !important;
-                background: #fff !important;
             }
 
-            /* Oculta tudo na tela normal */
             body * {
                 visibility: hidden !important;
             }
 
-            /* Torna visível APENAS o cupom */
             #comprovante-impressao, #comprovante-impressao * {
                 visibility: visible !important;
             }
@@ -42,14 +36,12 @@
                 position: absolute !important;
                 left: 0 !important;
                 top: 0 !important;
-                width: 100% !important;        /* Ocupa 100% da largura do papel de 58mm */
-                max-width: 58mm !important;    /* Garante a largura da bobina de 58mm */
-                padding: 2mm !important;       /* Margemzinha interna para não colar na borda */
-                box-sizing: border-box !important;
-                font-family: 'Courier New', Courier, monospace !important;
-                font-size: 11px !important;    /* Tamanho perfeito para leitura em 58mm */
+                width: 100% !important;        /* Ocupa a largura total mapeada pelo ESC POS */
+                font-family: monospace !important;
+                font-size: 13px !important;    /* Tamanho legível */
+                font-weight: bold !important;
                 color: #000 !important;
-                line-height: 1.2 !important;
+                line-height: 1.3 !important;
             }
         }
     </style>
