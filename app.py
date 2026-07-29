@@ -649,32 +649,29 @@ def cadastrar_produto():
 def salvar_venda():
     id_logado = session.get("usuario_id")
     if not id_logado:
-        return "❌ Usuário não autenticado", 401
+        return jsonify({"erro": "❌ Usuário não autenticado"}), 401
 
-    # 1. Verifica se o caixa está aberto
-    caixa_atual = Caixa.query.filter_by(usuario_id=id_logado, aberto=True).first()
+    # 1. Busca o caixa aberto do usuário (aberto == True e sem data de fechamento)
+    caixa_atual = Caixa.query.filter_by(usuario_id=id_logado, aberto=True, data_fechamento=None).order_by(Caixa.id.desc()).first()
+    
     if not caixa_atual:
-        # Trata requisição vinda por JavaScript (Fetch/AJAX) ou formulário normal
-        if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.is_json:
-            return jsonify({"erro": "❌ Abra o caixa antes de realizar uma venda."}), 400
-
         flash("❌ Abra o caixa antes de realizar uma venda!", "danger")
         return """
         <script>
             alert('❌ Abra o caixa antes de realizar uma venda.');
-            window.location.href='/caixa';
+            window.location.href = '/caixa';
         </script>
         """
 
     # 2. Carrega o carrinho enviado pelo front-end
     carrinho_json = request.form.get("carrinho")
     if not carrinho_json:
-        return "❌ Carrinho vazio", 400
+        return jsonify({"erro": "❌ Carrinho vazio"}), 400
 
     try:
         carrinho = json.loads(carrinho_json)
     except json.JSONDecodeError:
-        return "❌ Erro ao processar os itens do carrinho.", 400
+        return jsonify({"erro": "❌ Erro ao processar os itens do carrinho."}), 400
 
     pagamento1 = request.form.get("pagamento1")
     valor1 = request.form.get("valor1")
@@ -704,7 +701,7 @@ def salvar_venda():
         produto = Produto.query.filter_by(usuario_id=id_logado, nome=nome_produto).first()
 
         if not produto:
-            return f"❌ Produto não encontrado no banco: {nome_produto}", 404
+            return jsonify({"erro": f"❌ Produto não encontrado: {nome_produto}"}), 404
 
         if item["quantidade"] >= produto.estoque:
             produto.estoque = 0
@@ -839,8 +836,12 @@ def nova_venda():
     # 1. Busca os produtos do usuário logado direto do SQLite (ordenados por nome)
     produtos_ordenados = Produto.query.filter_by(usuario_id=id_logado).order_by(Produto.nome.asc()).all()
 
-    # 2. 🌟 CORREÇÃO: Busca o caixa do usuário que esteja REALMENTE ABERTO
-    caixa_atual = Caixa.query.filter_by(usuario_id=id_logado, aberto=True).first()
+    # 2. Busca o caixa do usuário que esteja REALMENTE ABERTO (aberto=True e sem data de fechamento)
+    caixa_atual = Caixa.query.filter_by(
+        usuario_id=id_logado, 
+        aberto=True, 
+        data_fechamento=None
+    ).order_by(Caixa.id.desc()).first()
     
     # Se encontrou um caixa aberto no banco, passa True, senão False
     caixa_aberto = True if caixa_atual else False
@@ -850,7 +851,6 @@ def nova_venda():
         produtos=produtos_ordenados,
         caixa_aberto=caixa_aberto
     )
-
 
 @app.route("/historico")
 def historico():
@@ -1600,20 +1600,21 @@ def salvar_gestao(id):
 
 
 from datetime import datetime
-
 @app.route("/caixa")
 def caixa():
     id_logado = session.get("usuario_id")
     if not id_logado:
         return redirect("/")
 
+    # Busca o último caixa registrado
     ultimo_caixa = Caixa.query.filter_by(usuario_id=id_logado).order_by(Caixa.id.desc()).first()
 
     total_despesas_caixa = sum(
         d['valor'] for d in despesas_db if d.get('origem') == 'caixa'
     )
 
-    if not ultimo_caixa or ultimo_caixa.data_fechamento:
+    # Considera fechado se não existir ou se tiver data de fechamento / aberto == False
+    if not ultimo_caixa or ultimo_caixa.data_fechamento or not ultimo_caixa.aberto:
         caixa_formatado = {
             "aberto": False,
             "valor_inicial": 0.0,
@@ -1719,16 +1720,20 @@ def caixa():
         data_atual=data_br
     )
 
-# ROTA DE ABRIR CAIXA
+
+# ==========================================
+# 3. ROTA DE ABRIR CAIXA
+# ==========================================
 @app.route("/abrir-caixa", methods=["POST"])
 def abrir_caixa():
-    global despesas_db  # Acessa a lista de despesas
+    global despesas_db
     
     id_logado = session.get("usuario_id")
     if not id_logado:
         return redirect("/")
 
-    valor = float(request.form["valor_inicial"])
+    valor = float(request.form.get("valor_inicial", 0.0))
+    data_br = datetime.now(FUSO_BRASILIA).strftime("%d/%m/%Y %H:%M")
 
     novo_caixa = Caixa(
         usuario_id=id_logado,
@@ -1736,13 +1741,13 @@ def abrir_caixa():
         valor_inicial=valor,
         vendas_periodo=0.0,
         saldo_final=0.0,
-        data_abertura=datetime.now().strftime("%d/%m/%Y %H:%M")
+        data_abertura=data_br
     )
 
     db.session.add(novo_caixa)
     db.session.commit()
 
-    # Zera as despesas para o novo turno que está começando
+    # Zera as despesas para o novo turno
     despesas_db.clear()
 
     flash("🔓 Caixa aberto com sucesso!", "success")
@@ -1750,7 +1755,9 @@ def abrir_caixa():
     return redirect("/caixa")
 
 
-# ROTA DE FECHAR CAIXA
+# ==========================================
+# 4. ROTA DE FECHAR CAIXA
+# ==========================================
 @app.route("/fechar-caixa", methods=["POST"])
 def fechar_caixa():
     global despesas_db
@@ -1759,7 +1766,7 @@ def fechar_caixa():
     if not id_logado:
         return redirect("/")
 
-    caixa_atual = Caixa.query.filter_by(usuario_id=id_logado, data_fechamento=None).order_by(Caixa.id.desc()).first()
+    caixa_atual = Caixa.query.filter_by(usuario_id=id_logado, aberto=True, data_fechamento=None).order_by(Caixa.id.desc()).first()
 
     if caixa_atual:
         total_despesas_caixa = sum(d['valor'] for d in despesas_db if d.get('origem') == 'caixa')
@@ -1767,7 +1774,7 @@ def fechar_caixa():
         
         caixa_atual.aberto = False
         caixa_atual.saldo_final = saldo_final
-        caixa_atual.data_fechamento = datetime.now().strftime("%d/%m/%Y %H:%M")
+        caixa_atual.data_fechamento = datetime.now(FUSO_BRASILIA).strftime("%d/%m/%Y %H:%M")
         
         db.session.commit()
         

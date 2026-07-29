@@ -295,6 +295,7 @@
 <div id="toast-sucesso" class="toast">🎉 Venda concluída com sucesso!</div>
 <script>
 
+// O Jinja injeta true ou false sem aspas para ser um valor booleano puro no JS
 const caixaAberto = {{ 'true' if caixa_aberto else 'false' }};
 
 $(document).ready(function() {
