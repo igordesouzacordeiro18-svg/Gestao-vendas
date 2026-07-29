@@ -294,16 +294,15 @@
 
 <div id="toast-sucesso" class="toast">🎉 Venda concluída com sucesso!</div>
 <script>
-
-// O Jinja injeta true ou false sem aspas para ser um valor booleano puro no JS
-const caixaAberto = {{ 'true' if caixa_aberto else 'false' }};
+// Injeta true ou false vindo do Flask
+const caixaAberto = {% if caixa_aberto %} true {% else %} false {% endif %};
 
 $(document).ready(function() {
     // Transforma o select comum de produtos em um campo com busca inteligente
     $('#produto').select2({
         placeholder: "🔍 Digite o nome do produto...",
         allowClear: true,
-        width: '100%' // Garante que ele vai ocupar o espaço certinho na tela
+        width: '100%'
     });
 });
 
@@ -328,7 +327,7 @@ function verificarMeioPagamento() {
         campoParcelas1.style.display = "block";
     } else {
         campoParcelas1.style.display = "none";
-        document.getElementById("parcelas1").value = "1"; // reseta para 1x
+        document.getElementById("parcelas1").value = "1";
     }
 
     if (divSegundo === "flex" && p2 === "Crédito") {
@@ -491,32 +490,25 @@ function esconderSegundoPagamento(){
     verificarMeioPagamento();
 }
 
-// BLOCO SUBMIT ÚNICO ATUALIZADO E SEM TRAVAS OCULTAS
+// SUBMIT COM VALIDAÇÃO RÍGIDA DO CAIXA
 document.getElementById("form-venda").addEventListener("submit", function(e){
-    // 1. Para o envio automático para fazermos os testes
     e.preventDefault(); 
     const form = this; 
 
-    // GARANTIA: Se travar, o botão volta ao normal para você tentar de novo
-    const botao = document.getElementById("btn-finalizar");
-    if (botao) {
-        botao.disabled = false;
-        botao.innerText = "✅ Finalizar Venda";
-    }
-
-    // 2. Valida se o caixa está aberto
-    if(typeof caixaAberto !== 'undefined' && !caixaAberto){
+    // 1. CHECAGEM PRIOTITÁRIA DO CAIXA
+    if (!caixaAberto) {
         alert("❌ Ação Bloqueada: Abra o caixa antes de realizar uma venda.");
+        window.location.href = "/caixa";
         return false;
     }
 
-    // 3. Valida se o carrinho está vazio
+    // 2. Valida se o carrinho está vazio
     if(typeof carrinho === 'undefined' || carrinho.length === 0){
         alert("🛒 Carrinho vazio! Adicione pelo menos um produto antes de finalizar.");
         return false; 
     }
 
-    // 4. Valida se preencheu a forma de pagamento
+    // 3. Valida se preencheu a forma de pagamento
     const p1 = document.getElementById("pagamento1") ? document.getElementById("pagamento1").value : "";
     if (p1 === "") {
         alert("💳 Por favor, selecione uma forma de pagamento.");
@@ -527,7 +519,7 @@ document.getElementById("form-venda").addEventListener("submit", function(e){
     const segundoPagamento = document.getElementById("segundo-pagamento");
     const estaComSegundaFormaAtiva = segundoPagamento && segundoPagamento.style.display === "flex";
 
-    // 5. Valida valores da segunda forma de pagamento
+    // 4. Valida valores da segunda forma de pagamento
     if(estaComSegundaFormaAtiva){
         const valor1 = parseFloat(document.getElementById("valor1").value || 0);
         const valor2 = parseFloat(document.getElementById("valor2").value || 0);
@@ -543,7 +535,7 @@ document.getElementById("form-venda").addEventListener("submit", function(e){
         }
     }
 
-    // 6. VALIDAÇÃO DO DINHEIRO
+    // 5. VALIDAÇÃO DO DINHEIRO
     const p2 = document.getElementById("pagamento2") ? document.getElementById("pagamento2").value : "";
     if (p1 === "Dinheiro" || (estaComSegundaFormaAtiva && p2 === "Dinheiro")) {
         const campoValorPago = document.getElementById("valor_pago");
@@ -564,7 +556,8 @@ document.getElementById("form-venda").addEventListener("submit", function(e){
         }
     }
 
-    // === SE TUDO PASSOU SUCESSO ===
+    // === TUDO OK: DISPARA ANIMAÇÃO E SUBMETE O FORMULÁRIO ===
+    const botao = document.getElementById("btn-finalizar");
     if (botao) {
         botao.disabled = true;
         botao.innerText = "⏳ Processando...";
@@ -578,9 +571,8 @@ document.getElementById("form-venda").addEventListener("submit", function(e){
 
     setTimeout(() => {
         form.submit(); 
-    }, 1600); 
+    }, 1400); 
 });
-
 </script>
 
 <script src="{{ url_for('static', filename='sidebar.js') }}"></script>

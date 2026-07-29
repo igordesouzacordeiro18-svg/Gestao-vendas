@@ -833,18 +833,15 @@ def nova_venda():
     if not id_logado:
         return redirect("/")
 
-    # 1. Busca os produtos do usuário logado direto do SQLite (ordenados por nome)
     produtos_ordenados = Produto.query.filter_by(usuario_id=id_logado).order_by(Produto.nome.asc()).all()
 
-    # 2. Busca o caixa do usuário que esteja REALMENTE ABERTO (aberto=True e sem data de fechamento)
-    caixa_atual = Caixa.query.filter_by(
-        usuario_id=id_logado, 
-        aberto=True, 
-        data_fechamento=None
-    ).order_by(Caixa.id.desc()).first()
+    # Pega estritamente o ÚLTIMO registro de caixa do usuário
+    ultimo_caixa = Caixa.query.filter_by(usuario_id=id_logado).order_by(Caixa.id.desc()).first()
     
-    # Se encontrou um caixa aberto no banco, passa True, senão False
-    caixa_aberto = True if caixa_atual else False
+    # O caixa só é considerado ABERTO se existir, estiver com aberto=True E não tiver data_fechamento
+    caixa_aberto = False
+    if ultimo_caixa and ultimo_caixa.aberto and not ultimo_caixa.data_fechamento:
+        caixa_aberto = True
 
     return render_template(
         "nova_venda.html",
