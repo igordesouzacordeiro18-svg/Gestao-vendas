@@ -12,25 +12,43 @@
             display: none;
         }
 
-        /* 2. REGRA DE IMPRESSÃO (Mostra só o cupom ao imprimir) */
+        /* 2. REGRA DE IMPRESSÃO */
         @media print {
+            /* Configura a folha do navegador para rolo de impressora térmica */
+            @page {
+                size: 58mm auto; /* Força o navegador a reconhecer o papel de 58mm */
+                margin: 0mm;     /* Remove margens brancas gigantes */
+            }
+
+            html, body {
+                width: 100% !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                background: #fff !important;
+            }
+
+            /* Oculta tudo na tela normal */
             body * {
                 visibility: hidden !important;
             }
+
+            /* Torna visível APENAS o cupom */
             #comprovante-impressao, #comprovante-impressao * {
                 visibility: visible !important;
             }
+
             #comprovante-impressao {
                 display: block !important;
                 position: absolute !important;
                 left: 0 !important;
                 top: 0 !important;
-                width: 220px !important; /* Largura perfeita para bobina 58mm */
-                max-width: 220px !important;
+                width: 100% !important;        /* Ocupa 100% da largura do papel de 58mm */
+                max-width: 58mm !important;    /* Garante a largura da bobina de 58mm */
+                padding: 2mm !important;       /* Margemzinha interna para não colar na borda */
+                box-sizing: border-box !important;
                 font-family: 'Courier New', Courier, monospace !important;
-                font-size: 12px !important;
+                font-size: 11px !important;    /* Tamanho perfeito para leitura em 58mm */
                 color: #000 !important;
-                background: #fff !important;
                 line-height: 1.2 !important;
             }
         }
