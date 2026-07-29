@@ -2,7 +2,7 @@ import json
 import os
 import sib_api_v3_sdk
 from sib_api_v3_sdk.rest import ApiException
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone # Importa o timezone
 from collections import defaultdict
 from functools import wraps
 from flask import Flask, render_template, request, redirect, jsonify, url_for, flash, session
@@ -10,6 +10,8 @@ from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 from itsdangerous import URLSafeTimedSerializer, SignatureExpired, BadTimeSignature
 
+# Define a constante do fuso horário de Brasília no topo
+FUSO_BRASILIA = timezone(timedelta(hours=-3))
 
 app = Flask(__name__)
 
@@ -649,7 +651,7 @@ def salvar_venda():
     if not id_logado:
         return "❌ Usuário não autenticado", 401
 
-    # 1. Verifica se o caixa está aberto no SQLite
+    # 1. Verifica se o caixa está aberto
     caixa_atual = Caixa.query.filter_by(usuario_id=id_logado, aberto=True).first()
     if not caixa_atual:
         return """
@@ -673,17 +675,14 @@ def salvar_venda():
     valor1 = request.form.get("valor1")
     pagamento2 = request.form.get("pagamento2")
     valor2 = request.form.get("valor2")
-    valor_pago_cliente = float(request.form.get("valor_pago") or 0)
 
-    # Organiza os pagamentos de forma detalhada
+    # Organiza os pagamentos
     pagamentos = []
     if pagamento1:
         pagamentos.append({"tipo": pagamento1, "valor": float(valor1 or 0)})
     if pagamento2:
         pagamentos.append({"tipo": pagamento2, "valor": float(valor2 or 0)})
 
-    # SE FOR PAGAMENTO MISTO: Grava o JSON dos pagamentos no campo
-    # SE FOR PAGAMENTO ÚNICO: Grava apenas a string (ex: "Dinheiro", "Pix")
     if len(pagamentos) > 1:
         pagamento_str = json.dumps(pagamentos, ensure_ascii=False)
     elif len(pagamentos) == 1:
@@ -694,7 +693,7 @@ def salvar_venda():
     total_geral = 0
     itens_vendidos_lista = []
 
-    # 3. Processa cada item do carrinho
+    # 3. Processa cada item do carrinho e abate estoque
     for item in carrinho:
         nome_produto = item["nome"].split(" - R$")[0].strip()
         produto = Produto.query.filter_by(usuario_id=id_logado, nome=nome_produto).first()
@@ -717,14 +716,17 @@ def salvar_venda():
             "subtotal": subtotal
         })
 
-    # 4. Registra a nova Venda na tabela
+    # Pega o horário correto do Brasil (UTC-3)
+    data_br = datetime.now(FUSO_BRASILIA).strftime("%d/%m/%Y %H:%M")
+
+    # 4. Registra a nova Venda
     nova_venda_db = Venda(
         usuario_id=id_logado,
         caixa_id=caixa_atual.id,
         valor_total=total_geral,
-        data=datetime.now().strftime("%d/%m/%Y %H:%M"),
+        data=data_br,
         produtos_vendidos=json.dumps(itens_vendidos_lista, ensure_ascii=False),
-        pagamento=pagamento_str  # <--- Guarda a quebra exata do pagamento aqui!
+        pagamento=pagamento_str
     )
 
     # 5. Atualiza o faturamento do Caixa
@@ -733,9 +735,8 @@ def salvar_venda():
     db.session.add(nova_venda_db)
     db.session.commit()
 
-    print(f"💰 VENDA REGISTRADA NO SQLITE! Total: R$ {total_geral:.2f}")
+    print(f"💰 VENDA REGISTRADA NO SQLITE! Total: R$ {total_geral:.2f} às {data_br}")
     return redirect("/historico")
-
 
 
 @app.route("/excluir-venda/<int:id>")
@@ -1595,17 +1596,14 @@ def salvar_gestao(id):
 
 from datetime import datetime
 
-# 1. ROTA PARA EXIBIR A TELA DO CAIXA
 @app.route("/caixa")
 def caixa():
     id_logado = session.get("usuario_id")
     if not id_logado:
         return redirect("/")
 
-    # Busca o último caixa do usuário
     ultimo_caixa = Caixa.query.filter_by(usuario_id=id_logado).order_by(Caixa.id.desc()).first()
 
-    # Total de despesas/sangrias
     total_despesas_caixa = sum(
         d['valor'] for d in despesas_db if d.get('origem') == 'caixa'
     )
@@ -1627,48 +1625,67 @@ def caixa():
             "detalhes_formas": []
         }
     else:
-        # Tenta buscar vendas do banco por forma de pagamento (se seu model de Venda existir)
-        vendas_dinheiro = 0.0
-        vendas_debito = 0.0
-        vendas_credito = 0.0
-        vendas_credito_parc = 0.0
-        vendas_pix = 0.0
-
-        try:
-            # Caso tenha tabela Venda vinculada ao caixa_id ou usuario
-            vendas = Venda.query.filter_by(caixa_id=ultimo_caixa.id).all()
-            for v in vendas:
-                f = getattr(v, 'forma_pagamento', '').lower()
-                if 'dinheiro' in f: vendas_dinheiro += v.valor
-                elif 'débito' in f or 'debito' in f: vendas_debito += v.valor
-                elif 'parcelado' in f: vendas_credito_parc += v.valor
-                elif 'crédito' in f or 'credito' in f: vendas_credito += v.valor
-                elif 'pix' in f: vendas_pix += v.valor
-        except Exception:
-            # Caso ainda não tenha o vinculo de Venda por Caixa, usa o total do caixa em dinheiro ou vendas
-            vendas_dinheiro = ultimo_caixa.vendas_periodo
-
-        # Mapeamento do resumo do topo
-        vendas_por_forma = {
-            "DINHEIRO": vendas_dinheiro,
-            "DÉBITO": vendas_debito,
-            "CRÉDITO": vendas_credito,
-            "CRÉDITO PARCELADO": vendas_credito_parc,
-            "PIX": vendas_pix
+        vendas_formas = {
+            "DINHEIRO": 0.0,
+            "DÉBITO": 0.0,
+            "CRÉDITO": 0.0,
+            "CRÉDITO PARCELADO": 0.0,
+            "PIX": 0.0
         }
 
-        # Detalhamento inferior por forma de pagamento
+        try:
+            vendas = Venda.query.filter_by(usuario_id=id_logado, caixa_id=ultimo_caixa.id).all() 
+            
+            for v in vendas:
+                pagamento_dado = getattr(v, 'pagamento', '')
+                total_venda = float(getattr(v, 'valor_total', 0.0))
+
+                if pagamento_dado and pagamento_dado.startswith('['):
+                    try:
+                        lista_pags = json.loads(pagamento_dado)
+                        for item in lista_pags:
+                            tipo = str(item.get('tipo', '')).upper()
+                            vlr = float(item.get('valor', 0.0))
+                            
+                            if "DINHEIRO" in tipo: vendas_formas["DINHEIRO"] += vlr
+                            elif "DÉBITO" in tipo or "DEBITO" in tipo: vendas_formas["DÉBITO"] += vlr
+                            elif "PARCELADO" in tipo: vendas_formas["CRÉDITO PARCELADO"] += vlr
+                            elif "CRÉDITO" in tipo or "CREDITO" in tipo: vendas_formas["CRÉDITO"] += vlr
+                            elif "PIX" in tipo: vendas_formas["PIX"] += vlr
+                            else: vendas_formas["DINHEIRO"] += vlr
+                        continue
+                    except Exception:
+                        pass
+
+                forma = str(pagamento_dado).upper()
+                if "DINHEIRO" in forma:
+                    vendas_formas["DINHEIRO"] += total_venda
+                elif "DÉBITO" in forma or "DEBITO" in forma:
+                    vendas_formas["DÉBITO"] += total_venda
+                elif "PARCELADO" in forma:
+                    vendas_formas["CRÉDITO PARCELADO"] += total_venda
+                elif "CRÉDITO" in forma or "CREDITO" in forma:
+                    vendas_formas["CRÉDITO"] += total_venda
+                elif "PIX" in forma:
+                    vendas_formas["PIX"] += total_venda
+                else:
+                    vendas_formas["DINHEIRO"] += total_venda
+
+        except Exception as e:
+            print(f"❌ Erro ao calcular formas de pagamento: {e}")
+            vendas_formas["DINHEIRO"] = ultimo_caixa.vendas_periodo
+
         detalhes_formas = [
             {
                 "nome": "Dinheiro",
-                "entrada": ultimo_caixa.valor_inicial + vendas_dinheiro,
+                "entrada": ultimo_caixa.valor_inicial + vendas_formas["DINHEIRO"],
                 "saida": total_despesas_caixa,
-                "saldo": (ultimo_caixa.valor_inicial + vendas_dinheiro) - total_despesas_caixa
+                "saldo": (ultimo_caixa.valor_inicial + vendas_formas["DINHEIRO"]) - total_despesas_caixa
             },
-            {"nome": "Débito", "entrada": vendas_debito, "saida": 0.0, "saldo": vendas_debito},
-            {"nome": "Crédito", "entrada": vendas_credito, "saida": 0.0, "saldo": vendas_credito},
-            {"nome": "Crédito Parcelado", "entrada": vendas_credito_parc, "saida": 0.0, "saldo": vendas_credito_parc},
-            {"nome": "Pix", "entrada": vendas_pix, "saida": 0.0, "saldo": vendas_pix}
+            {"nome": "Débito", "entrada": vendas_formas["DÉBITO"], "saida": 0.0, "saldo": vendas_formas["DÉBITO"]},
+            {"nome": "Crédito", "entrada": vendas_formas["CRÉDITO"], "saida": 0.0, "saldo": vendas_formas["CRÉDITO"]},
+            {"nome": "Crédito Parcelado", "entrada": vendas_formas["CRÉDITO PARCELADO"], "saida": 0.0, "saldo": vendas_formas["CRÉDITO PARCELADO"]},
+            {"nome": "Pix", "entrada": vendas_formas["PIX"], "saida": 0.0, "saldo": vendas_formas["PIX"]}
         ]
 
         saldo_calculado = (ultimo_caixa.valor_inicial + ultimo_caixa.vendas_periodo) - total_despesas_caixa
@@ -1685,14 +1702,16 @@ def caixa():
             "recebimentos": 0.0,
             "taxa_servico": 0.0,
             "vendas_fiado": 0.0,
-            "vendas_por_forma": vendas_por_forma,
+            "vendas_por_forma": vendas_formas,
             "detalhes_formas": detalhes_formas
         }
+
+    data_br = datetime.now(FUSO_BRASILIA).strftime("%d/%m/%Y %H:%M")
 
     return render_template(
         "caixa.html", 
         caixa=caixa_formatado, 
-        data_atual=datetime.now().strftime("%d/%m/%Y %H:%M")
+        data_atual=data_br
     )
 
 # ROTA DE ABRIR CAIXA
