@@ -654,6 +654,11 @@ def salvar_venda():
     # 1. Verifica se o caixa está aberto
     caixa_atual = Caixa.query.filter_by(usuario_id=id_logado, aberto=True).first()
     if not caixa_atual:
+        # Trata requisição vinda por JavaScript (Fetch/AJAX) ou formulário normal
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.is_json:
+            return jsonify({"erro": "❌ Abra o caixa antes de realizar uma venda."}), 400
+
+        flash("❌ Abra o caixa antes de realizar uma venda!", "danger")
         return """
         <script>
             alert('❌ Abra o caixa antes de realizar uma venda.');
@@ -664,7 +669,7 @@ def salvar_venda():
     # 2. Carrega o carrinho enviado pelo front-end
     carrinho_json = request.form.get("carrinho")
     if not carrinho_json:
-        return "❌ Carrinho vazio"
+        return "❌ Carrinho vazio", 400
 
     try:
         carrinho = json.loads(carrinho_json)
