@@ -673,17 +673,27 @@ def salvar_venda():
     except json.JSONDecodeError:
         return jsonify({"erro": "❌ Erro ao processar os itens do carrinho."}), 400
 
+    # Função auxiliar para converter valores numéricos com segurança sem dar Erro 500
+    def converter_para_float(val):
+        if not val or str(val).strip() == "":
+            return 0.0
+        try:
+            return float(str(val).replace(",", "."))
+        except (ValueError, TypeError):
+            return 0.0
+
     pagamento1 = request.form.get("pagamento1")
-    valor1 = request.form.get("valor1")
+    valor1 = converter_para_float(request.form.get("valor1"))
+    
     pagamento2 = request.form.get("pagamento2")
-    valor2 = request.form.get("valor2")
+    valor2 = converter_para_float(request.form.get("valor2"))
 
     # Organiza os pagamentos
     pagamentos = []
-    if pagamento1:
-        pagamentos.append({"tipo": pagamento1, "valor": float(valor1 or 0)})
-    if pagamento2:
-        pagamentos.append({"tipo": pagamento2, "valor": float(valor2 or 0)})
+    if pagamento1 and pagamento1.strip() != "":
+        pagamentos.append({"tipo": pagamento1, "valor": valor1})
+    if pagamento2 and pagamento2.strip() != "":
+        pagamentos.append({"tipo": pagamento2, "valor": valor2})
 
     if len(pagamentos) > 1:
         pagamento_str = json.dumps(pagamentos, ensure_ascii=False)

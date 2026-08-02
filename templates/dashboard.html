@@ -1,17 +1,10 @@
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
-
     <meta charset="UTF-8">
-
-    <meta name="viewport"
-    content="width=device-width, initial-scale=1.0">
-
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sistema de Vendas</title>
-
-    <link rel="stylesheet"
-    href="{{ url_for('static', filename='style.css') }}">
-
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <style>
         /* Estilo para abas desabilitadas para funcionários */
         .disabled-link {
@@ -27,9 +20,7 @@
             cursor: not-allowed !important;
         }
     </style>
-
 </head>
-
 <body>
 
     <div class="layout">
@@ -69,42 +60,22 @@
             <div class="cards">
 
                 <div class="card">
-
-                    <h3>
-                        💰 Caixa Total
-                    </h3>
-
+                    <h3>💰 Caixa Total</h3>
                     <p id="caixa-texto" style="margin: 8px 0; font-size: 24px; font-weight: bold; cursor: pointer;" onclick="toggleCaixa()">
                         R$ ••••• <span style="font-size: 16px; margin-left: 6px;">🔒</span>
                     </p>
-
                     <!-- Guardamos o valor real escondido -->
                     <input type="hidden" id="valor-real-caixa" value="{{ valor_total }}">
-
                 </div>
 
                 <div class="card">
-
-                    <h3>
-                        📦 Produtos
-                    </h3>
-
-                    <p>
-                        {{ total_produtos }}
-                    </p>
-
+                    <h3>📦 Produtos</h3>
+                    <p>{{ total_produtos }}</p>
                 </div>
 
                 <div class="card">
-
-                    <h3>
-                        🧾 Vendas
-                    </h3>
-
-                    <p>
-                        {{ total_vendas }}
-                    </p>
-
+                    <h3>🧾 Vendas</h3>
+                    <p>{{ total_vendas }}</p>
                 </div>
 
             </div>
@@ -112,18 +83,12 @@
             <div class="acoes">
 
                 <a href="/nova-venda">
-
-                    <button>
-                        ➕ Nova Venda
-                    </button>
-
+                    <button>➕ Nova Venda</button>
                 </a>
 
                 {% if session.get('cargo') == 'admin' %}
                     <a href="/produtos">
-                        <button>
-                            📦 Cadastrar Produto
-                        </button>
+                        <button>📦 Cadastrar Produto</button>
                     </a>
                 {% else %}
                     <button disabled title="Apenas Gerentes">
@@ -135,38 +100,30 @@
 
             <div class="historico-recente">
 
-                <h2>
-                    🕒 Últimas vendas
-                </h2>
+                <h2>🕒 Últimas vendas</h2>
 
                 {% for venda in ultimas_vendas %}
 
                     <div class="venda-recente">
 
                         <div class="itens-venda">
-
-                        {% for item in venda.itens %}
-
-                        <div class="tag-item">
-
-                            {{ item.quantidade }}x
-                            {{ item.produto }}
-
-                            -
-                            R$ {{ item.preco }}
-
+                            {% for item in venda.itens %}
+                                <div class="tag-item">
+                                    {{ item.quantidade }}x {{ item.produto }} - R$ {{ item.preco }}
+                                </div>
+                            {% endfor %}
                         </div>
-
-                    {% endfor %}
-
-                </div>
 
                         <span>
                             {{ venda.quantidade }}x
                         </span>
 
                         <span>
-                            💳 {{ venda.pagamento }}
+                            {% if venda.pagamento and venda.pagamento.startswith('[') %}
+                                💳 Misto
+                            {% else %}
+                                💳 {{ venda.pagamento }}
+                            {% endif %}
                         </span>
 
                         <strong>
