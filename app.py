@@ -705,25 +705,47 @@ def salvar_venda():
     total_geral = 0
     itens_vendidos_lista = []
 
-    # 3. Processa cada item do carrinho e abate estoque
+    # 3. Processa cada item do carrinho e abate estoque de forma ultra segura
     for item in carrinho:
-        nome_produto = item["nome"].split(" - R$")[0].strip()
+        nome_bruto = item.get("nome", "")
+        
+        # Limpa o sufixo " - R$ XX.XX" do nome
+        if " - R$" in nome_bruto:
+            nome_produto = nome_bruto.split(" - R$")[0].strip()
+        elif " - " in nome_bruto:
+            nome_produto = nome_bruto.split(" - ")[0].strip()
+        else:
+            nome_produto = nome_bruto.strip()
+
+        # Busca o produto no banco
         produto = Produto.query.filter_by(usuario_id=id_logado, nome=nome_produto).first()
 
+        # Trava 1: Se não achar com o nome limpo, tenta buscar pelo nome bruto
         if not produto:
-            return jsonify({"erro": f"❌ Produto não encontrado: {nome_produto}"}), 404
+            produto = Produto.query.filter_by(usuario_id=id_logado, nome=nome_bruto.strip()).first()
 
-        if item["quantidade"] >= produto.estoque:
+        # Trava 2: Evita o Erro 500 estourar caso o produto não exista no banco
+        if not produto:
+            return jsonify({"erro": f"❌ Produto '{nome_produto}' não foi encontrado!"}), 404
+
+        # Garantia de tipo numérico para quantidade
+        try:
+            qtd_vendida = int(item.get("quantidade", 1))
+        except (ValueError, TypeError):
+            qtd_vendida = 1
+
+        # Abate estoque
+        if qtd_vendida >= produto.estoque:
             produto.estoque = 0
         else:
-            produto.estoque -= item["quantidade"]
+            produto.estoque -= qtd_vendida
 
-        subtotal = produto.preco * item["quantidade"]
+        subtotal = produto.preco * qtd_vendida
         total_geral += subtotal
 
         itens_vendidos_lista.append({
             "produto": produto.nome,
-            "quantidade": item["quantidade"],
+            "quantidade": qtd_vendida,
             "preco_unitario": produto.preco,
             "subtotal": subtotal
         })
