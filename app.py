@@ -694,7 +694,7 @@ def salvar_venda():
     pagamento2 = request.form.get("pagamento2")
     valor2 = converter_para_float(request.form.get("valor2"))
 
-    # Organiza os pagamentos (salva sempre em formato JSON para padronização)
+    # Organiza os pagamentos
     pagamentos = []
     if pagamento1 and pagamento1.strip() != "":
         pagamentos.append({"tipo": pagamento1, "valor": valor1})
@@ -704,16 +704,13 @@ def salvar_venda():
     if not pagamentos:
         pagamentos.append({"tipo": "Dinheiro", "valor": 0.0})
 
-    pagamento_str = json.dumps(pagamentos, ensure_ascii=False)
-
     total_geral = 0
     itens_vendidos_lista = []
 
-    # 3. Processa cada item do carrinho e abate estoque com limite mínimo em 0
+    # 3. Processa cada item do carrinho e calcula o total
     for item in carrinho:
         nome_bruto = item.get("nome", "")
         
-        # Limpa o sufixo " - R$ XX.XX" do nome
         if " - R$" in nome_bruto:
             nome_produto = nome_bruto.split(" - R$")[0].strip()
         elif " - " in nome_bruto:
@@ -721,24 +718,19 @@ def salvar_venda():
         else:
             nome_produto = nome_bruto.strip()
 
-        # Busca o produto no banco
         produto = Produto.query.filter_by(usuario_id=id_logado, nome=nome_produto).first()
 
-        # Trava 1: Se não achar com o nome limpo, tenta buscar pelo nome bruto
         if not produto:
             produto = Produto.query.filter_by(usuario_id=id_logado, nome=nome_bruto.strip()).first()
 
-        # Trava 2: Evita o Erro 500 estourar caso o produto não exista no banco
         if not produto:
             return jsonify({"erro": f"❌ Produto '{nome_produto}' não foi encontrado!"}), 404
 
-        # Garantia de tipo numérico para quantidade
         try:
             qtd_vendida = int(item.get("quantidade", 1))
         except (ValueError, TypeError):
             qtd_vendida = 1
 
-        # 🌟 REGRA NOVA DE ESTOQUE: Abate sem deixar ficar negativo (mínimo é 0)
         produto.estoque = max(0, produto.estoque - qtd_vendida)
 
         subtotal = produto.preco * qtd_vendida
@@ -750,6 +742,12 @@ def salvar_venda():
             "preco_unitario": produto.preco,
             "subtotal": subtotal
         })
+
+    # 🌟 CORREÇÃO AQUI: Se for pagamento simples e o valor veio 0.0, assume o total_geral da venda
+    if len(pagamentos) == 1 and pagamentos[0]["valor"] == 0.0:
+        pagamentos[0]["valor"] = total_geral
+
+    pagamento_str = json.dumps(pagamentos, ensure_ascii=False)
 
     # Pega o horário correto do Brasil (UTC-3)
     data_br = datetime.now(FUSO_BRASILIA).strftime("%d/%m/%Y %H:%M")
@@ -771,7 +769,7 @@ def salvar_venda():
     db.session.add(nova_venda_db)
     db.session.commit()
 
-    print(f"💰 VENDA REGISTRADA COM SUCESSO! Total: R$ {total_geral:.2f} às {data_br}")
+    print(f"💰 VENDA REGISTRADA COM SUCESSO! Total: R$ {total_geral:.2f} | Pagamento: {pagamento_str}")
     return redirect("/historico")
 
 
