@@ -491,8 +491,8 @@ def dashboard():
     # 1. Total de produtos cadastrados pelo usuário no banco
     total_produtos = Produto.query.filter_by(usuario_id=id_logado).count()
 
-    # 2. Busca o caixa atual do usuário
-    caixa_atual = Caixa.query.filter_by(usuario_id=id_logado, aberto=True).first()
+    # 2. Busca apenas o caixa que está EFETIVAMENTE ABERTO (aberto=True e sem data de fechamento)
+    caixa_atual = Caixa.query.filter_by(usuario_id=id_logado, aberto=True, data_fechamento=None).order_by(Caixa.id.desc()).first()
     
     total_vendas_periodo = 0
     valor_total_caixa = 0.0
@@ -506,17 +506,19 @@ def dashboard():
 
     if caixa_atual:
         # Busca todas as vendas que pertencem ao caixa que está aberto atualmente
-        vendas_caixa = Venda.query.filter_by(usuario_id=id_logado, caixa_id=caixa_atual.id).all()
+        vendas_caixa = Venda.query.filter_by(usuario_id=id_logado, caixa_id=caixa_atual.id, status="CONCLUIDA").all()
         total_vendas_periodo = len(vendas_caixa)
         
         # 🟢 CÁLCULO DAS DESPESAS DO CAIXA
-        # Soma todas as despesas lançadas cuja origem seja 'caixa'
-        total_despesas_caixa = sum(
-            d['valor'] for d in despesas_db if d.get('origem') == 'caixa'
-        )
+        total_despesas_caixa = 0.0
+        try:
+            despesas_db = Despesa.query.filter_by(usuario_id=id_logado, caixa_id=caixa_atual.id).all()
+            total_despesas_caixa = sum(float(d.valor or 0) for d in despesas_db)
+        except Exception:
+            total_despesas_caixa = 0.0
 
         # Saldo Líquido do Caixa = Inicial + Vendas - Despesas
-        valor_total_caixa = (caixa_atual.valor_inicial + caixa_atual.vendas_periodo) - total_despesas_caixa
+        valor_total_caixa = (caixa_atual.valor_inicial or 0.0) + (caixa_atual.vendas_periodo or 0.0) - total_despesas_caixa
 
         # Soma os totais por forma de pagamento no caixa atual
         for v in vendas_caixa:
@@ -537,30 +539,34 @@ def dashboard():
             if len(ultimas_vendas_lista) < 5:
                 try:
                     itens = json.loads(v.produtos_vendidos)
-                except:
+                except Exception:
                     itens = []
                 
+                # Soma a quantidade total de itens vendidos nesta venda específica
+                qtd_total_venda = sum(int(item.get("quantidade", 1)) for item in itens) if itens else 1
+
                 ultimas_vendas_lista.append({
                     "id": v.id,
                     "total": v.valor_total,
                     "data": v.data,
+                    "quantidade": qtd_total_venda, # 🌟 CHAVE QUE FALTAVA
                     "pagamento": getattr(v, 'pagamento', 'Dinheiro'),
                     "itens": itens
                 })
 
     # 3. Estatísticas Gerais (para produtos mais vendidos)
-    todas_vendas = Venda.query.filter_by(usuario_id=id_logado).all()
+    todas_vendas = Venda.query.filter_by(usuario_id=id_logado, status="CONCLUIDA").all()
     contador_produtos = {}
 
     for venda in todas_vendas:
         try:
             itens = json.loads(venda.produtos_vendidos)
-        except:
+        except Exception:
             itens = []
 
         for item in itens:
             nome_p = item.get("produto")
-            qtd = item.get("quantidade", 0)
+            qtd = int(item.get("quantidade", 0))
             if nome_p:
                 contador_produtos[nome_p] = contador_produtos.get(nome_p, 0) + qtd
 
@@ -578,7 +584,6 @@ def dashboard():
         valor_total=f"{valor_total_caixa:.2f}",
         ultimas_vendas=ultimas_vendas_lista,
         produto_mais_vendido=produto_mais_vendido,
-        # Variáveis enviadas para a notinha de impressão:
         data_atual=data_hoje,
         total_dinheiro=f"{total_dinheiro:.2f}",
         total_debito=f"{total_debito:.2f}",

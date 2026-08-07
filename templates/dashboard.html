@@ -6,7 +6,6 @@
     <title>Sistema de Vendas</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <style>
-        /* Estilo para abas desabilitadas para funcionários */
         .disabled-link {
             color: #8898aa !important;
             opacity: 0.5;
@@ -102,37 +101,41 @@
 
                 <h2>🕒 Últimas vendas</h2>
 
-                {% for venda in ultimas_vendas %}
+                {% if ultimas_vendas %}
+                    {% for venda in ultimas_vendas %}
 
-                    <div class="venda-recente">
+                        <div class="venda-recente">
 
-                        <div class="itens-venda">
-                            {% for item in venda.itens %}
-                                <div class="tag-item">
-                                    {{ item.quantidade }}x {{ item.produto }} - R$ {{ item.preco }}
-                                </div>
-                            {% endfor %}
+                            <div class="itens-venda">
+                                {% for item in venda.itens %}
+                                    <div class="tag-item">
+                                        {{ item.quantidade }}x {{ item.produto }} - R$ {{ item.preco_unitario or item.preco }}
+                                    </div>
+                                {% endfor %}
+                            </div>
+
+                            <span>
+                                {{ venda.quantidade }}x
+                            </span>
+
+                            <span>
+                                {% if venda.pagamento and (venda.pagamento.startswith('[') or 'tipo' in venda.pagamento) %}
+                                    💳 Misto
+                                {% else %}
+                                    💳 {{ venda.pagamento }}
+                                {% endif %}
+                            </span>
+
+                            <strong>
+                                R$ {{ "%.2f"|format(venda.total|float) }}
+                            </strong>
+
                         </div>
 
-                        <span>
-                            {{ venda.quantidade }}x
-                        </span>
-
-                        <span>
-                            {% if venda.pagamento and venda.pagamento.startswith('[') %}
-                                💳 Misto
-                            {% else %}
-                                💳 {{ venda.pagamento }}
-                            {% endif %}
-                        </span>
-
-                        <strong>
-                            R$ {{ venda.total }}
-                        </strong>
-
-                    </div>
-
-                {% endfor %}
+                    {% endfor %}
+                {% else %}
+                    <p style="color: #64748b; font-size: 14px; margin-top: 15px;">⚪ Caixa fechado ou nenhuma venda realizada neste turno.</p>
+                {% endif %}
 
             </div>
 
@@ -140,7 +143,7 @@
 
     </div>
 
-<!-- MODAL HUMANIZADO DE CONFIRMAÇÃO DE SENHA -->
+<!-- MODAL DE CONFIRMAÇÃO DE SENHA -->
 <dialog id="modalGerente" style="border: none; border-radius: 12px; padding: 24px; box-shadow: 0 10px 25px rgba(0,0,0,0.15); max-width: 320px; width: 100%;">
     <h3 style="margin-top: 0; font-size: 18px; color: #1e293b;">🔑 Liberação de Gestão</h3>
     <p style="font-size: 13px; color: #64748b; line-height: 1.4;">Digite a senha do administrador para liberar o acesso avançado:</p>
