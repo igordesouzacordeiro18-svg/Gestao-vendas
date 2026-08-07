@@ -1010,29 +1010,44 @@ def processar_totais_pagamento(vendas_lista):
     for venda in vendas_lista:
         pgto_raw = getattr(venda, "forma_pagamento", None) or getattr(venda, "pagamento", None) or getattr(venda, "metodo_pagamento", None) or ""
         
-        # Tenta interpretar se o campo de pagamento é um JSON de Pagamento Misto
         eh_misto = False
-        try:
-            pagamentos_detalhados = json.loads(pgto_raw)
-            if isinstance(pagamentos_detalhados, list):
-                eh_misto = True
-                for p in pagamentos_detalhados:
-                    tipo = str(p.get("tipo", "")).strip().lower()
-                    val = float(p.get("valor", 0.0))
 
-                    if "pix" in tipo:
-                        pix += val
-                    elif any(termo in tipo for termo in ["cart", "debito", "débito", "credito", "crédito"]):
-                        cartao += val
-                    else:
-                        dinheiro += val
-        except:
-            eh_misto = False
+        # 1. Tenta interpretar se o campo de pagamento é um JSON
+        if pgto_raw:
+            try:
+                pagamentos_detalhados = json.loads(pgto_raw) if isinstance(pgto_raw, str) else pgto_raw
+                
+                if isinstance(pagamentos_detalhados, list):
+                    eh_misto = True
+                    for p in pagamentos_detalhados:
+                        tipo = str(p.get("tipo", "")).strip().lower()
+                        
+                        # Conversão segura para float
+                        val_raw = p.get("valor", 0.0)
+                        try:
+                            val = float(str(val_raw).replace(",", ".")) if val_raw is not None else 0.0
+                        except (ValueError, TypeError):
+                            val = 0.0
 
-        # Se for pagamento simples (uma forma única)
+                        if "pix" in tipo:
+                            pix += val
+                        elif any(termo in tipo for termo in ["cart", "debito", "débito", "credito", "crédito"]):
+                            cartao += val
+                        else:
+                            dinheiro += val
+            except Exception:
+                eh_misto = False
+
+        # 2. Se for pagamento simples (texto puro ou se não for lista no JSON)
         if not eh_misto:
             pgto = str(pgto_raw).strip().lower()
-            val = venda.valor_total or 0.0
+            
+            # Pega o valor total da venda com conversão segura
+            val_total_raw = getattr(venda, "valor_total", 0.0) or getattr(venda, "total", 0.0) or 0.0
+            try:
+                val = float(str(val_total_raw).replace(",", "."))
+            except (ValueError, TypeError):
+                val = 0.0
 
             if "pix" in pgto:
                 pix += val
@@ -1057,7 +1072,9 @@ def relatorio_financeiro():
         return redirect("/")
 
     filtro = request.args.get("filtro", "hoje")
-    hoje = datetime.now()
+    
+    # 🌟 Garante o fuso horário de Brasília para a data atual
+    hoje = datetime.now(FUSO_BRASILIA) if 'FUSO_BRASILIA' in globals() else datetime.now()
 
     todas_vendas = Venda.query.filter_by(usuario_id=id_logado).all()
     vendas_filtradas = []
@@ -1067,13 +1084,28 @@ def relatorio_financeiro():
         if getattr(venda, 'status', '') == 'CANCELADA':
             continue
 
-        try:
-            data_venda = datetime.strptime(venda.data, "%d/%m/%Y %H:%M")
-        except (ValueError, TypeError):
+        str_data = str(getattr(venda, 'data', '')).strip()
+        if not str_data:
             continue
 
+        # 🌟 Tenta converter em datetime aceitando múltiplos formatos de data
+        data_venda = None
+        formatos_possiveis = ["%d/%m/%Y %H:%M:%S", "%d/%m/%Y %H:%M", "%d/%m/%Y"]
+        
+        for fmt in formatos_possiveis:
+            try:
+                data_venda = datetime.strptime(str_data, fmt)
+                break
+            except (ValueError, TypeError):
+                pass
+
+        # Se mesmo assim não conseguiu converter a data, ignora esse registro
+        if not data_venda:
+            continue
+
+        # Aplica os filtros de data
         if filtro == "hoje":
-            if data_venda.date() == hoje.date():
+            if data_venda.strftime("%d/%m/%Y") == hoje.strftime("%d/%m/%Y"):
                 vendas_filtradas.append(venda)
         elif filtro == "semana":
             if data_venda.isocalendar()[1] == hoje.isocalendar()[1] and data_venda.year == hoje.year:
@@ -1085,35 +1117,38 @@ def relatorio_financeiro():
             if data_venda.year == hoje.year:
                 vendas_filtradas.append(venda)
 
-    total = sum(getattr(v, 'valor_total', 0) or getattr(v, 'total', 0) for v in vendas_filtradas)
+    total = sum(float(getattr(v, 'valor_total', 0) or getattr(v, 'total', 0) or 0) for v in vendas_filtradas)
     
-    # Processa pagamentos apenas das vendas ativas
+    # Processa pagamentos apenas das vendas filtradas
     pix, dinheiro, cartao = processar_totais_pagamento(vendas_filtradas)
 
-    # Cálculo do Lucro apenas de vendas ativas
+    # Cálculo do Lucro
     lucro = 0.0
     for venda in vendas_filtradas:
         try:
-            itens = json.loads(venda.produtos_vendidos) if isinstance(venda.produtos_vendidos, str) else venda.produtos_vendidos
-        except:
+            if isinstance(venda.produtos_vendidos, str):
+                itens = json.loads(venda.produtos_vendidos)
+            else:
+                itens = venda.produtos_vendidos or []
+        except Exception:
             itens = []
 
         for item in itens:
             nome_prod = item.get("produto") or item.get("nome")
-            qtd = item.get("quantidade", 0)
-            preco_venda_item = item.get("preco_unitario", 0.0)
+            qtd = int(item.get("quantidade", 0))
+            preco_venda_item = float(item.get("preco_unitario", 0.0) or item.get("preco", 0.0))
 
             prod = Produto.query.filter_by(usuario_id=id_logado, nome=nome_prod).first()
-            if prod and prod.custo and prod.custo > 0:
-                lucro += (preco_venda_item - prod.custo) * qtd
+            if prod and prod.custo and float(prod.custo) > 0:
+                lucro += (preco_venda_item - float(prod.custo)) * qtd
 
     return render_template(
         "relatorio_financeiro.html",
-        total=round(total, 2),
-        pix=round(pix, 2),
-        dinheiro=round(dinheiro, 2),
-        cartao=round(cartao, 2),
-        lucro=round(lucro, 2),
+        total=f"{total:.2f}",
+        pix=f"{pix:.2f}",
+        dinheiro=f"{dinheiro:.2f}",
+        cartao=f"{cartao:.2f}",
+        lucro=f"{lucro:.2f}",
         filtro=filtro
     )
 
