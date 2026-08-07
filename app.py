@@ -74,16 +74,17 @@ class Caixa(db.Model):
 class Venda(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     usuario_id = db.Column(db.Integer, db.ForeignKey('usuario.id'), nullable=False)
-    caixa_id = db.Column(db.Integer, db.ForeignKey('caixa.id'), nullable=True) # Vincula ao caixa atual!
+    caixa_id = db.Column(db.Integer, db.ForeignKey('caixa.id'), nullable=True)
     
     valor_total = db.Column(db.Float, nullable=False)
-    data = db.Column(db.String(20)) # Ex: "09/07/2026 14:15"
-    produtos_vendidos = db.Column(db.Text, nullable=False) # Itens da venda em JSON
-    pagamento = db.Column(db.String(50), nullable=True)
+    data = db.Column(db.String(20))
+    produtos_vendidos = db.Column(db.Text, nullable=False)
     
-    # 🌟 NOVOS CAMPOS PARA CANCELAMENTO/ESTORNO:
-    status = db.Column(db.String(20), default='CONCLUIDA') # 'CONCLUIDA' ou 'CANCELADA'
-    motivo_cancelamento = db.Column(db.Text, nullable=True) # Ex: "Cliente desistiu da compra"
+    # 🌟 ALTERE ESTA LINHA (mude de String(50) para Text):
+    pagamento = db.Column(db.Text, nullable=True) 
+    
+    status = db.Column(db.String(20), default='CONCLUIDA')
+    motivo_cancelamento = db.Column(db.Text, nullable=True)
 
 class Troca(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -1823,18 +1824,26 @@ with app.app_context():
     from werkzeug.security import generate_password_hash
     from datetime import datetime, timedelta
 
-    # 1. Migração de Colunas Faltantes na tabela 'venda' (Compatível com SQLite e Render)
+    # 1. Migrações da tabela 'venda' (Compatível com SQLite e Render)
     try:
         db.session.execute(text("ALTER TABLE venda ADD COLUMN status VARCHAR(50) DEFAULT 'concluida';"))
         db.session.commit()
         print("✅ Coluna 'status' verificada/adicionada com sucesso!")
     except Exception:
-        db.session.rollback() # Se já existir no banco, ignora e segue a vida
+        db.session.rollback() # Se já existir no banco, ignora
 
     try:
         db.session.execute(text("ALTER TABLE venda ADD COLUMN motivo_cancelamento TEXT;"))
         db.session.commit()
         print("✅ Coluna 'motivo_cancelamento' verificada/adicionada com sucesso!")
+    except Exception:
+        db.session.rollback()
+
+    # 🌟 Aumenta a coluna pagamento no Render para suportar pagamento misto em JSON
+    try:
+        db.session.execute(text("ALTER TABLE venda ALTER COLUMN pagamento TYPE TEXT;"))
+        db.session.commit()
+        print("✅ Coluna 'pagamento' alterada para TEXT com sucesso!")
     except Exception:
         db.session.rollback()
 
