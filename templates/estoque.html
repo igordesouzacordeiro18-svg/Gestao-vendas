@@ -34,7 +34,8 @@
 
                     <br><br>
 
-                    {% if produto["estoque"] == 0 %}
+                    <!-- Ajustado para <= 0 para tratar 0 e quaisquer históricos negativos -->
+                    {% if produto["estoque"] <= 0 %}
                         <span class="status-estoque status-zero">⚪ Sem estoque</span>
                     {% elif produto["estoque"] <= produto["estoque_minimo"] %}
                         <span class="status-estoque status-baixo">🔴 Estoque baixo: {{ produto["estoque"] }}</span>

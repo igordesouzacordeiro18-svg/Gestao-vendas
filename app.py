@@ -652,7 +652,7 @@ def salvar_venda():
     if not id_logado:
         return jsonify({"erro": "❌ Usuário não autenticado"}), 401
 
-    # 1. Busca o caixa aberto do usuário (aberto == True e sem data de fechamento)
+    # 1. Busca o caixa aberto do usuário
     caixa_atual = Caixa.query.filter_by(usuario_id=id_logado, aberto=True, data_fechamento=None).order_by(Caixa.id.desc()).first()
     
     if not caixa_atual:
@@ -674,7 +674,7 @@ def salvar_venda():
     except json.JSONDecodeError:
         return jsonify({"erro": "❌ Erro ao processar os itens do carrinho."}), 400
 
-    # Função auxiliar para converter valores numéricos com segurança sem dar Erro 500
+    # Função auxiliar para converter valores numéricos com segurança
     def converter_para_float(val):
         if not val or str(val).strip() == "":
             return 0.0
@@ -689,24 +689,22 @@ def salvar_venda():
     pagamento2 = request.form.get("pagamento2")
     valor2 = converter_para_float(request.form.get("valor2"))
 
-    # Organiza os pagamentos
+    # Organiza os pagamentos (salva sempre em formato JSON para padronização)
     pagamentos = []
     if pagamento1 and pagamento1.strip() != "":
         pagamentos.append({"tipo": pagamento1, "valor": valor1})
     if pagamento2 and pagamento2.strip() != "":
         pagamentos.append({"tipo": pagamento2, "valor": valor2})
 
-    if len(pagamentos) > 1:
-        pagamento_str = json.dumps(pagamentos, ensure_ascii=False)
-    elif len(pagamentos) == 1:
-        pagamento_str = pagamentos[0]["tipo"]
-    else:
-        pagamento_str = "Dinheiro"
+    if not pagamentos:
+        pagamentos.append({"tipo": "Dinheiro", "valor": 0.0})
+
+    pagamento_str = json.dumps(pagamentos, ensure_ascii=False)
 
     total_geral = 0
     itens_vendidos_lista = []
 
-    # 3. Processa cada item do carrinho e abate estoque de forma ultra segura
+    # 3. Processa cada item do carrinho e abate estoque com limite mínimo em 0
     for item in carrinho:
         nome_bruto = item.get("nome", "")
         
@@ -735,11 +733,8 @@ def salvar_venda():
         except (ValueError, TypeError):
             qtd_vendida = 1
 
-        # Abate estoque
-        if qtd_vendida >= produto.estoque:
-            produto.estoque = 0
-        else:
-            produto.estoque -= qtd_vendida
+        # 🌟 REGRA NOVA DE ESTOQUE: Abate sem deixar ficar negativo (mínimo é 0)
+        produto.estoque = max(0, produto.estoque - qtd_vendida)
 
         subtotal = produto.preco * qtd_vendida
         total_geral += subtotal
@@ -761,7 +756,8 @@ def salvar_venda():
         valor_total=total_geral,
         data=data_br,
         produtos_vendidos=json.dumps(itens_vendidos_lista, ensure_ascii=False),
-        pagamento=pagamento_str
+        pagamento=pagamento_str,
+        status="CONCLUIDA"
     )
 
     # 5. Atualiza o faturamento do Caixa
@@ -770,7 +766,7 @@ def salvar_venda():
     db.session.add(nova_venda_db)
     db.session.commit()
 
-    print(f"💰 VENDA REGISTRADA NO SQLITE! Total: R$ {total_geral:.2f} às {data_br}")
+    print(f"💰 VENDA REGISTRADA COM SUCESSO! Total: R$ {total_geral:.2f} às {data_br}")
     return redirect("/historico")
 
 
