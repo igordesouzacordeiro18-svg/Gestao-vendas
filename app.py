@@ -1823,15 +1823,20 @@ with app.app_context():
     from werkzeug.security import generate_password_hash
     from datetime import datetime, timedelta
 
-    # 1. Migração de Colunas Faltantes na tabela 'venda'
+    # 1. Migração de Colunas Faltantes na tabela 'venda' (Compatível com SQLite e Render)
     try:
-        db.session.execute(text("ALTER TABLE venda ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'concluida';"))
-        db.session.execute(text("ALTER TABLE venda ADD COLUMN IF NOT EXISTS motivo_cancelamento TEXT;"))
+        db.session.execute(text("ALTER TABLE venda ADD COLUMN status VARCHAR(50) DEFAULT 'concluida';"))
         db.session.commit()
-        print("✅ Migração de colunas executada com sucesso!")
-    except Exception as e:
+        print("✅ Coluna 'status' verificada/adicionada com sucesso!")
+    except Exception:
+        db.session.rollback() # Se já existir no banco, ignora e segue a vida
+
+    try:
+        db.session.execute(text("ALTER TABLE venda ADD COLUMN motivo_cancelamento TEXT;"))
+        db.session.commit()
+        print("✅ Coluna 'motivo_cancelamento' verificada/adicionada com sucesso!")
+    except Exception:
         db.session.rollback()
-        print(f"⚠️ Aviso/Erro na migração: {e}")
 
     # 2. Criador automático de Admin
     seu_email_real = "igordesouzacordeiro18@gmail.com"
