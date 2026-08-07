@@ -1500,13 +1500,16 @@ def gestao():
         if minimo_val is None:
             minimo_val = getattr(produto, 'minimo', 0)
 
+        # 🌟 Trava de segurança: garante que o estoque nunca seja menor que 0 na exibição
+        estoque_exibicao = max(0, produto.estoque or 0)
+
         produtos_ordenados.append({
             "id": produto.id,
             "nome": produto.nome,
             "preco": produto.preco,
             "custo": produto.custo or 0.0,
-            "estoque": produto.estoque,
-            "estoque_minimo": minimo_val or 0  # <--- CHAVE QUE FALTAVA
+            "estoque": estoque_exibicao,
+            "estoque_minimo": minimo_val or 0
         })
 
     return render_template(

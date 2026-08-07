@@ -23,7 +23,10 @@
                 <div class="produto-item">
                     <h3>📦 {{ produto.nome }}</h3>
                     <p>💰 Venda: R$ {{ produto.preco }}</p>
-                    <p>📦 Estoque: {{ produto.estoque }}</p>
+                    
+                    <!-- 🌟 Trava visual caso o estoque seja menor que 0 -->
+                    <p>📦 Estoque: {% if produto.estoque < 0 %}0{% else %}{{ produto.estoque }}{% endif %}</p>
+                    
                     <p>⚠️ Estoque mínimo: {{ produto.estoque_minimo }}</p>
                     <p>💵 Custo: R$ {{ produto.custo }}</p>
 
