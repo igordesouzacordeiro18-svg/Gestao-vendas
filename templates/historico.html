@@ -205,9 +205,24 @@
                                 </div>
                             {% endfor %}
                         </div>
+                        <!-- CÓDIGO CORRIGIDO E ESTILIZADO -->
                         <hr>
-                        <strong>💰 Total: R$ {{ venda.total }}</strong>
-                        <span>💳 {{ venda.pagamento }}</span>
+                        <strong>💰 Total: R$ {{ venda.total if venda.total is defined else venda.valor_total }}</strong>
+
+                        {# Captura o valor do desconto de forma segura para Objeto ou Dicionário #}
+                        {% set valor_desconto = venda.desconto if venda.desconto is defined else (venda.get('desconto') if venda.get is defined else 0) %}
+
+                        {% if valor_desconto and valor_desconto|float > 0 %}
+                            <div style="margin-top: 6px; margin-bottom: 6px;">
+                                <span style="background-color: #d1e7dd; color: #0f5132; border: 1px solid #badbcc; border-radius: 12px; padding: 3px 10px; font-size: 12px; font-weight: bold; display: inline-block;">
+                                    🏷️ Desconto: R$ {{ "%.2f"|format(valor_desconto|float) }}
+                                </span>
+                            </div>
+                        {% endif %}
+
+                        <div>
+                            <span>💳 {{ venda.pagamento }}</span>
+                        </div>
                         <small>🕒 {{ venda.data }}</small>
 
                         {% if venda.status == 'CANCELADA' %}

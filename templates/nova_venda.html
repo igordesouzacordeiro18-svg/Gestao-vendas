@@ -210,7 +210,22 @@
 
                 <input type="hidden" name="carrinho" id="carrinho-input">
 
-                <h3>💳 Pagamento</h3>
+                <!-- CABEÇALHO DO PAGAMENTO COM BOTÃO DE DESCONTO ALINHADO -->
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 20px; margin-bottom: 10px;">
+                    <h3 style="margin: 0;">💳 Pagamento</h3>
+                    <button type="button" onclick="toggleDesconto()" style="background: #eef2ff; border: 1px solid #c7d2fe; color: #3730a3; padding: 5px 10px; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 13px; transition: all 0.2s;">
+                        🏷️ + Aplicar desconto
+                    </button>
+                </div>
+
+                <!-- CAIXINHA DE DESCONTO ESTILIZADA -->
+                <div id="box-desconto" style="display: none; background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 6px; padding: 10px 12px; margin-bottom: 12px;">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <label for="desconto" style="font-size: 13px; font-weight: 600; color: #475569; white-space: nowrap;">Desconto (R$):</label>
+                        <input type="number" step="0.01" min="0" id="desconto" name="desconto" placeholder="0.00" value="0.00" oninput="atualizarCarrinho()" style="width: 120px; padding: 6px; font-size: 14px; border: 1px solid #cbd5e1; border-radius: 4px; outline: none;">
+                        <small style="color: #64748b; font-size: 12px;">Subtraído do total da venda</small>
+                    </div>
+                </div>
 
                 <div style="display: flex; flex-direction: column; gap: 5px; margin-top: 10px;">
                     <div id="primeiro-pagamento-completo" style="display:flex; gap:10px; align-items:center;">
@@ -363,40 +378,6 @@ function definirValorPago(valorNota) {
     calcularTroco();
 }
 
-// Calcula o troco de forma dinâmica e altera a cor do box
-function calcularTroco() {
-    const p1 = document.getElementById("pagamento1").value;
-    const p2 = document.getElementById("pagamento2").value;
-    const divSegundo = document.getElementById("segundo-pagamento").style.display;
-
-    const valorEntregue = parseFloat(document.getElementById("valor_pago").value) || 0;
-    const boxTroco = document.getElementById("box-troco");
-    let valorDestinadoAoDinheiro = 0;
-
-    if (divSegundo === "flex") {
-        if (p1 === "Dinheiro") {
-            valorDestinadoAoDinheiro = parseFloat(document.getElementById("valor1").value) || 0;
-        } else if (p2 === "Dinheiro") {
-            valorDestinadoAoDinheiro = parseFloat(document.getElementById("valor2").value) || 0;
-        }
-    } else {
-        valorDestinadoAoDinheiro = total; 
-    }
-
-    if (document.getElementById("valor_pago").value === "") {
-        boxTroco.innerHTML = `<strong style="color: #2e7d32;">💰 Troco: R$ 0.00</strong>`;
-        return;
-    }
-
-    const diferenca = valorEntregue - valorDestinadoAoDinheiro; 
-    if (diferenca >= 0) {
-        boxTroco.innerHTML = `<strong style="color: #2e7d32;">💰 Troco: R$ ${diferenca.toFixed(2)}</strong>`;
-    } else {
-        const falta = Math.abs(diferenca);
-        boxTroco.innerHTML = `<strong style="color: #d32f2f;">⚠️ Valor insuficiente! Faltam R$ ${falta.toFixed(2)}</strong>`;
-    }
-}
-
 function atualizarCarrinho(){
     const lista = document.getElementById("lista-carrinho");
     lista.innerHTML = "";
@@ -416,15 +397,63 @@ function atualizarCarrinho(){
         lista.appendChild(item);
     });
 
+    // 🏷️ Pega o valor do desconto digitado
+    const desconto = parseFloat(document.getElementById("desconto") ? document.getElementById("desconto").value : 0) || 0;
+    
+    // Total líquido (não deixa ser menor que zero)
+    const totalComDesconto = Math.max(0, total - desconto);
+
     const totalElement = document.getElementById("total");
     if(totalElement) {
-        totalElement.innerText = `Total: R$ ${total.toFixed(2)}`;
+        if (desconto > 0) {
+            totalElement.innerHTML = `<small style="font-size: 14px; color: #666; text-decoration: line-through;">Subtotal: R$ ${total.toFixed(2)}</small><br>Total: R$ ${totalComDesconto.toFixed(2)}`;
+        } else {
+            totalElement.innerText = `Total: R$ ${total.toFixed(2)}`;
+        }
     }
     
     document.getElementById("carrinho-input").value = JSON.stringify(carrinho);
     
     if (typeof calcularTroco === "function") {
         calcularTroco();
+    }
+}
+
+function calcularTroco() {
+    const p1 = document.getElementById("pagamento1").value;
+    const p2 = document.getElementById("pagamento2").value;
+    const divSegundo = document.getElementById("segundo-pagamento").style.display;
+
+    const valorEntregue = parseFloat(document.getElementById("valor_pago").value) || 0;
+    const boxTroco = document.getElementById("box-troco");
+    
+    // 🏷️ Calcula com base no Total com Desconto
+    const desconto = parseFloat(document.getElementById("desconto") ? document.getElementById("desconto").value : 0) || 0;
+    const totalComDesconto = Math.max(0, total - desconto);
+
+    let valorDestinadoAoDinheiro = 0;
+
+    if (divSegundo === "flex") {
+        if (p1 === "Dinheiro") {
+            valorDestinadoAoDinheiro = parseFloat(document.getElementById("valor1").value) || 0;
+        } else if (p2 === "Dinheiro") {
+            valorDestinadoAoDinheiro = parseFloat(document.getElementById("valor2").value) || 0;
+        }
+    } else {
+        valorDestinadoAoDinheiro = totalComDesconto; 
+    }
+
+    if (document.getElementById("valor_pago").value === "") {
+        boxTroco.innerHTML = `<strong style="color: #2e7d32;">💰 Troco: R$ 0.00</strong>`;
+        return;
+    }
+
+    const diferenca = valorEntregue - valorDestinadoAoDinheiro; 
+    if (diferenca >= 0) {
+        boxTroco.innerHTML = `<strong style="color: #2e7d32;">💰 Troco: R$ ${diferenca.toFixed(2)}</strong>`;
+    } else {
+        const falta = Math.abs(diferenca);
+        boxTroco.innerHTML = `<strong style="color: #d32f2f;">⚠️ Valor insuficiente! Faltam R$ ${falta.toFixed(2)}</strong>`;
     }
 }
 
@@ -453,6 +482,18 @@ function adicionarProduto(){
     $('#produto').val('').trigger('change');
     document.getElementById("quantidade").value = "1";
 }
+
+function toggleDesconto() {
+    const box = document.getElementById("box-desconto");
+    if (box.style.display === "none") {
+        box.style.display = "block";
+    } else {
+        box.style.display = "none";
+        document.getElementById("desconto").value = "0.00";
+        atualizarCarrinho();
+    }
+}
+
 
 function removerItem(indice){
     carrinho.splice(indice, 1);
@@ -515,22 +556,27 @@ document.getElementById("form-venda").addEventListener("submit", function(e){
         return false;
     }
 
-    const valorTotalVenda = parseFloat(total) || 0;
+    // 🏷️ Pega o valor do desconto digitado
+    const descontoAplicado = parseFloat(document.getElementById("desconto") ? document.getElementById("desconto").value : 0) || 0;
+    
+    // Total real da venda que precisa ser pago (Subtotal - Desconto)
+    const valorTotalComDesconto = Math.max(0, parseFloat(total) - descontoAplicado);
+
     const segundoPagamento = document.getElementById("segundo-pagamento");
     const estaComSegundaFormaAtiva = segundoPagamento && segundoPagamento.style.display === "flex";
 
-    // 4. Valida valores da segunda forma de pagamento
+    // 4. Valida valores da segunda forma de pagamento contra o TOTAL COM DESCONTO
     if(estaComSegundaFormaAtiva){
         const valor1 = parseFloat(document.getElementById("valor1").value || 0);
         const valor2 = parseFloat(document.getElementById("valor2").value || 0);
         const soma = valor1 + valor2;
 
-        if(soma > valorTotalVenda){
-            alert(`Sobrou R$ ${(soma - valorTotalVenda).toFixed(2)}`);
+        if(soma > valorTotalComDesconto){
+            alert(`Sobrou R$ ${(soma - valorTotalComDesconto).toFixed(2)}`);
             return false; 
         }
-        if(soma < valorTotalVenda){
-            alert(`Falta R$ ${(valorTotalVenda - soma).toFixed(2)}`);
+        if(soma < valorTotalComDesconto){
+            alert(`Falta R$ ${(valorTotalComDesconto - soma).toFixed(2)}`);
             return false; 
         }
     }
@@ -547,7 +593,7 @@ document.getElementById("form-venda").addEventListener("submit", function(e){
                 (parseFloat(document.getElementById("valor1").value) || 0) : 
                 (parseFloat(document.getElementById("valor2").value) || 0);
         } else {
-            valorDestinadoAoDinheiro = valorTotalVenda;
+            valorDestinadoAoDinheiro = valorTotalComDesconto;
         }
 
         if (valorEntregue < valorDestinadoAoDinheiro) {

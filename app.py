@@ -77,10 +77,10 @@ class Venda(db.Model):
     caixa_id = db.Column(db.Integer, db.ForeignKey('caixa.id'), nullable=True)
     
     valor_total = db.Column(db.Float, nullable=False)
+    desconto = db.Column(db.Float, default=0.0) 
     data = db.Column(db.String(20))
     produtos_vendidos = db.Column(db.Text, nullable=False)
     
-    # 🌟 ALTERE ESTA LINHA (mude de String(50) para Text):
     pagamento = db.Column(db.Text, nullable=True) 
     
     status = db.Column(db.String(20), default='CONCLUIDA')
@@ -688,6 +688,9 @@ def salvar_venda():
         except (ValueError, TypeError):
             return 0.0
 
+    # 🏷️ CAPTURA O DESCONTO ENVIADO PELO FORMULÁRIO
+    desconto = converter_para_float(request.form.get("desconto"))
+
     pagamento1 = request.form.get("pagamento1")
     valor1 = converter_para_float(request.form.get("valor1"))
     
@@ -704,10 +707,10 @@ def salvar_venda():
     if not pagamentos:
         pagamentos.append({"tipo": "Dinheiro", "valor": 0.0})
 
-    total_geral = 0
+    subtotal_produtos = 0.0
     itens_vendidos_lista = []
 
-    # 3. Processa cada item do carrinho e calcula o total
+    # 3. Processa cada item do carrinho e calcula o subtotal bruto
     for item in carrinho:
         nome_bruto = item.get("nome", "")
         
@@ -734,7 +737,7 @@ def salvar_venda():
         produto.estoque = max(0, produto.estoque - qtd_vendida)
 
         subtotal = produto.preco * qtd_vendida
-        total_geral += subtotal
+        subtotal_produtos += subtotal
 
         itens_vendidos_lista.append({
             "produto": produto.nome,
@@ -743,7 +746,10 @@ def salvar_venda():
             "subtotal": subtotal
         })
 
-    # 🌟 CORREÇÃO AQUI: Se for pagamento simples e o valor veio 0.0, assume o total_geral da venda
+    # 🏷️ APLICA O DESCONTO NO TOTAL FINAL (Garantindo que não fique negativo)
+    total_geral = max(0.0, subtotal_produtos - desconto)
+
+    # Se for pagamento simples e o valor veio 0.0, assume o total_geral (LÍQUIDO) da venda
     if len(pagamentos) == 1 and pagamentos[0]["valor"] == 0.0:
         pagamentos[0]["valor"] = total_geral
 
@@ -752,24 +758,30 @@ def salvar_venda():
     # Pega o horário correto do Brasil (UTC-3)
     data_br = datetime.now(FUSO_BRASILIA).strftime("%d/%m/%Y %H:%M")
 
-    # 4. Registra a nova Venda
-    nova_venda_db = Venda(
-        usuario_id=id_logado,
-        caixa_id=caixa_atual.id,
-        valor_total=total_geral,
-        data=data_br,
-        produtos_vendidos=json.dumps(itens_vendidos_lista, ensure_ascii=False),
-        pagamento=pagamento_str,
-        status="CONCLUIDA"
-    )
+    # 4. Prepara os dados e registra a nova Venda
+    dados_venda = {
+        "usuario_id": id_logado,
+        "caixa_id": caixa_atual.id,
+        "valor_total": total_geral, # 💡 Salva o valor com desconto ($40,00)
+        "data": data_br,
+        "produtos_vendidos": json.dumps(itens_vendidos_lista, ensure_ascii=False),
+        "pagamento": pagamento_str,
+        "status": "CONCLUIDA"
+    }
 
-    # 5. Atualiza o faturamento do Caixa
+    # Se o seu model Venda no banco já tiver a coluna 'desconto', salva ela também
+    if hasattr(Venda, 'desconto'):
+        dados_venda["desconto"] = desconto
+
+    nova_venda_db = Venda(**dados_venda)
+
+    # 5. Atualiza o faturamento do Caixa com o valor LÍQUIDO real recebido
     caixa_atual.vendas_periodo += total_geral
 
     db.session.add(nova_venda_db)
     db.session.commit()
 
-    print(f"💰 VENDA REGISTRADA COM SUCESSO! Total: R$ {total_geral:.2f} | Pagamento: {pagamento_str}")
+    print(f"💰 VENDA REGISTRADA! Total Líquido: R$ {total_geral:.2f} (Desconto: R$ {desconto:.2f})")
     return redirect("/historico")
 
 
@@ -910,6 +922,7 @@ def historico():
         vendas_formatadas.append({
             "id": v.id,
             "total": v.valor_total,
+            "desconto": getattr(v, 'desconto', 0.0) or 0.0,  # 🌟 ESSA LINHA FALTAVA AQUI!
             "data": v.data,
             "itens": itens,
             "pagamento": pgto_exibicao,
