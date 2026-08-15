@@ -1904,6 +1904,14 @@ with app.app_context():
     except Exception:
         db.session.rollback()
 
+    # 🌟 Adiciona a coluna desconto na tabela venda se ela ainda não existir
+    try:
+        db.session.execute(text("ALTER TABLE venda ADD COLUMN desconto FLOAT DEFAULT 0.0;"))
+        db.session.commit()
+        print("✅ Coluna 'desconto' verificada/adicionada com sucesso!")
+    except Exception:
+        db.session.rollback()
+
     # 2. Criador automático de Admin
     seu_email_real = "igordesouzacordeiro18@gmail.com"
     sua_senha_real = "123123"
