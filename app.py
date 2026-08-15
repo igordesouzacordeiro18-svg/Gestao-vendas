@@ -96,12 +96,14 @@ class Venda(db.Model):
 class Troca(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     usuario_id = db.Column(db.Integer, db.ForeignKey('usuario.id'), nullable=False) # Garanta que a FK aponte para sua tabela de usuários (ex: usuario.id ou user.id)
-    data = db.Column(db.String(20), nullable=False)
+    data = db.Column(db.String(30), nullable=False) # Aumentado levemente para 30 por garantia com formatos de data
     produtos_devolvidos = db.Column(db.Text, nullable=False)  # Armazena a lista de devolvidos como string JSON
     produtos_recebidos = db.Column(db.Text, nullable=False)    # Armazena a lista de novos como string JSON
     credito = db.Column(db.Float, nullable=False)
     total_compra = db.Column(db.Float, nullable=False)
     saldo_diferenca = db.Column(db.Float, nullable=False)
+    forma_pagamento_diferenca = db.Column(db.String(50), nullable=True) # Ex: "Dinheiro", "Cartão de Crédito", "N/A"
+    parcelas = db.Column(db.Integer, default=1)                         # Quantidade de parcelas (padrão 1)
 
 
 # === EMAIL DO ADMINISTRADOR PRINCIPAL ===
@@ -929,7 +931,7 @@ def historico():
         vendas_formatadas.append({
             "id": v.id,
             "total": v.valor_total,
-            "desconto": getattr(v, 'desconto', 0.0) or 0.0,  # 🌟 ESSA LINHA FALTAVA AQUI!
+            "desconto": getattr(v, 'desconto', 0.0) or 0.0,
             "data": v.data,
             "itens": itens,
             "pagamento": pgto_exibicao,
@@ -960,6 +962,8 @@ def historico():
             "credito": t.credito,
             "total_compra": t.total_compra,
             "saldo_diferenca": t.saldo_diferenca,
+            "forma_pagamento_diferenca": getattr(t, 'forma_pagamento_diferenca', 'Troca Sem Diferença'),
+            "parcelas": getattr(t, 'parcelas', 1),
             "devolvidos": devolvidos,
             "novos": recebidos
         })
@@ -1371,7 +1375,6 @@ def finalizar_troca():
     if not id_logado:
         return jsonify({"erro": "❌ Usuário não autenticado"}), 401
 
-    # Verifica se o caixa está aberto no SQLite
     caixa_atual = Caixa.query.filter_by(usuario_id=id_logado, aberto=True).first()
     if not caixa_atual:
         return jsonify({"erro": "❌ Abra o caixa antes de realizar ou finalizar uma troca."}), 400
@@ -1381,40 +1384,38 @@ def finalizar_troca():
     novos = data.get("novosProdutos", [])
     credito = float(data.get("credito", 0))
     total_compra = float(data.get("totalCompra", 0))
-    abrir_mao = data.get("abrirMaoCredito", False) # True ou False vindo do checkbox
-    forma_pagamento = data.get("formaPagamento", "Troca")
+    abrir_mao = data.get("abrirMaoCredito", False)
+    forma_pagamento = data.get("formaPagamento", "Troca Sem Diferença")
     parcelas = int(data.get("parcelas", 1))
 
-    # Diferença original (Crédito - Nova Compra)
     diferenca = credito - total_compra
     
     if diferenca > 0 and not abrir_mao:
         return jsonify({"erro": "❌ Não é permitido finalizar trocas com saldo restante sem o cliente abrir mão da diferença."}), 400
 
-    # SE O CLIENTE ABRIU MÃO: A diferença que sobra para ele passa a ser ZERO (ele não leva esse crédito para casa)
     if diferenca > 0 and abrir_mao:
         saldo_salvar = 0.0
     else:
         saldo_salvar = diferenca
 
-    # 1. Devolve itens ao estoque no SQLite
+    # 1. Devolve itens ao estoque
     for item in devolvidos:
         produto = Produto.query.filter_by(id=int(item["id"]), usuario_id=id_logado).first()
         if produto:
             produto.estoque += int(item["quantidade"])
 
-    # 2. Retira novos itens do estoque no SQLite
+    # 2. Retira novos itens do estoque
     for item in novos:
         produto = Produto.query.filter_by(id=int(item["id"]), usuario_id=id_logado).first()
         if produto:
             produto.estoque -= int(item["quantidade"])
 
-    # 3. Entrada financeira extra no caixa se o cliente comprou MAIS do que tinha de crédito (diferença negativa)
+    # 3. Entrada financeira no caixa se o cliente comprou MAIS (diferença negativa)
     valor_pago_restante = abs(diferenca) if diferenca < 0 else 0
     if diferenca < 0:
         caixa_atual.vendas_periodo += valor_pago_restante
 
-    # 4. CRIAÇÃO DO HISTÓRICO DA TROCA NO BANCO
+    # 4. Gravação no banco com os novos campos
     data_hoje = datetime.now().strftime("%d/%m/%Y %H:%M")
 
     nova_troca_db = Troca(
@@ -1424,7 +1425,9 @@ def finalizar_troca():
         produtos_recebidos=json.dumps(novos),
         credito=credito,
         total_compra=total_compra,
-        saldo_diferenca=saldo_salvar # Salva o saldo corrigido (0.0 se ele abriu mão)
+        saldo_diferenca=saldo_salvar,
+        forma_pagamento_diferenca=forma_pagamento if diferenca < 0 else "Troca Sem Diferença",
+        parcelas=parcelas if diferenca < 0 else 1
     )
     
     db.session.add(nova_troca_db)

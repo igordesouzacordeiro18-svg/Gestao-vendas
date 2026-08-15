@@ -6,7 +6,6 @@
     <title>Histórico Geral</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <style>
-        /* Estilos rápidos para criar as abas de navegação */
         .abas-historico {
             display: flex;
             gap: 15px;
@@ -32,7 +31,6 @@
         .secao-historico.ativa {
             display: block;
         }
-        /* Estilo especial para destacar cards de troca */
         .card-troca {
             border-left: 5px solid #2196F3;
         }
@@ -45,8 +43,6 @@
             margin-top: 10px;
             border-left: 3px solid #ff9800;
         }
-
-        /* 🌟 ESTILOS PARA CANCELAMENTO DE VENDA */
         .card-cancelada {
             background-color: #ffebee !important;
             border-left: 5px solid #f44336 !important;
@@ -71,10 +67,8 @@
             margin-top: 10px;
             border-left: 3px solid #d32f2f;
         }
-
-        /* 🔴 BOTÃO 'X' DISCRETO NO CANTO SUPERIOR DIREITO */
         .produto-item {
-            position: relative; /* Garante o alinhamento absoluto do X */
+            position: relative;
         }
         .btn-fechar-x {
             position: absolute;
@@ -97,8 +91,6 @@
             background-color: #ffebee;
             transform: scale(1.15);
         }
-
-        /* 🌟 MODAL / POPUP DE CANCELAMENTO */
         .modal-overlay {
             display: none;
             position: fixed;
@@ -172,13 +164,13 @@
             <button class="btn-aba" onclick="alternarAba('trocas', this)">🔁 Trocas Realizadas</button>
         </div>
 
+        <!-- ABA DE VENDAS -->
         <div id="secao-vendas" class="secao-historico ativa">
-            <h2>💰 Total vendido no caixa: R$ {{ total }}</h2>
+            <h2>💰 Total vendido no caixa: R$ {{ "%.2f"|format(total|float) }}</h2>
             <div class="grid-produtos">
                 {% for venda in vendas %}
                     <div class="produto-item item-pesquisa {% if venda.status == 'CANCELADA' %}card-cancelada{% endif %}">
                         
-                        <!-- 🔴 "X" discreto no canto superior direito para cancelar -->
                         {% if venda.status != 'CANCELADA' %}
                             <button type="button" 
                                     class="btn-fechar-x" 
@@ -200,18 +192,16 @@
                         <div class="itens-venda">
                             {% for item in venda.itens %}
                                 <div class="tag-item">
-                                    <div>📦 {{ item.produto }} - {{ item.quantidade }}x</div>
-                                    <strong>R$ {{ item.subtotal }}</strong>
+                                    <div>📦 {{ item.produto if item.produto is defined else item.nome }} - {{ item.quantidade }}x</div>
+                                    <strong>R$ {{ "%.2f"|format(item.subtotal|float if item.subtotal is defined else (item.preco * item.quantidade)|float) }}</strong>
                                 </div>
                             {% endfor %}
                         </div>
-                        <!-- CÓDIGO CORRIGIDO E ESTILIZADO -->
+
                         <hr>
-                        <strong>💰 Total: R$ {{ venda.total if venda.total is defined else venda.valor_total }}</strong>
+                        <strong>💰 Total: R$ {{ "%.2f"|format(venda.total|float if venda.total is defined else venda.valor_total|float) }}</strong>
 
-                        {# Captura o valor do desconto de forma segura para Objeto ou Dicionário #}
                         {% set valor_desconto = venda.desconto if venda.desconto is defined else (venda.get('desconto') if venda.get is defined else 0) %}
-
                         {% if valor_desconto and valor_desconto|float > 0 %}
                             <div style="margin-top: 6px; margin-bottom: 6px;">
                                 <span style="background-color: #d1e7dd; color: #0f5132; border: 1px solid #badbcc; border-radius: 12px; padding: 3px 10px; font-size: 12px; font-weight: bold; display: inline-block;">
@@ -236,6 +226,7 @@
             </div>
         </div>
 
+        <!-- ABA DE TROCAS -->
         <div id="secao-trocas" class="secao-historico">
             <h2>🔄 Registro de Trocas da Loja</h2>
             <div class="grid-produtos">
@@ -248,38 +239,35 @@
                                 <div style="margin-top: 10px;">
                                     <strong>⬇️ Devolvido(s):</strong>
                                     {% for item in troca.devolvidos %}
-                                        <div style="font-size: 14px; color: #cc2a2a;">• {{ item.nome }} ({{ item.quantidade }}x)</div>
+                                        <div style="font-size: 14px; color: #cc2a2a;">• {{ item.nome if item.nome is defined else item.produto }} ({{ item.quantidade }}x)</div>
                                     {% endfor %}
                                 </div>
 
                                 <div style="margin-top: 10px;">
                                     <strong>⬆️ Levado(s) de Novo:</strong>
                                     {% for item in troca.novos %}
-                                        <div style="font-size: 14px; color: #2e7d32;">• {{ item.nome }} ({{ item.quantidade }}x)</div>
+                                        <div style="font-size: 14px; color: #2e7d32;">• {{ item.nome if item.nome is defined else item.produto }} ({{ item.quantidade }}x)</div>
                                     {% endfor %}
-                                </div>
-
-                                <div class="detalhe-explicacao">
-                                    {% if troca.get('detalhe_historico') %}
-                                        💡 {{ troca.detalhe_historico }}
-                                    {% else %}
-                                        💡 Registro de troca processado no sistema.
-                                    {% endif %}
                                 </div>
 
                                 {% set diferenca_calculada = troca.total_compra - troca.credito %}
 
                                 {% if troca.saldo_diferenca == 0 and troca.credito > troca.total_compra %}
                                     <div style="margin-top: 10px; background-color: #e8f5e9; color: #2e7d32; padding: 8px; border-radius: 4px; font-size: 13px; font-weight: bold; border-left: 3px solid #4caf50;">
-                                        📈 Lucro Extra por Desapego: R$ {{ (troca.credito - troca.total_compra)|abs|round(2) }}
+                                        📈 Lucro Extra (Cliente Abriu Mão): R$ {{ "%.2f"|format((troca.credito - troca.total_compra)|abs) }}
                                     </div>
 
                                 {% elif diferenca_calculada > 0 %}
                                     <div style="margin-top: 10px; background-color: #e3f2fd; color: #0d47a1; padding: 8px; border-radius: 4px; font-size: 13px; font-weight: bold; border-left: 3px solid #2196f3;">
-                                        💰 Diferença Recebida no Caixa: R$ {{ diferenca_calculada|round(2) }} 
-                                        {% if troca.get('forma_pagamento_diferenca') == 'Cartão de Crédito' or troca.get('parcelas', 1) > 1 %}
-                                            (em {{ troca.get('parcelas', 1) }}x)
-                                        {% endif %}
+                                        💰 Diferença Recebida no Caixa: R$ {{ "%.2f"|format(diferenca_calculada) }}
+                                        <br>
+                                        <span style="font-weight: normal; font-size: 12px; color: #1565c0;">
+                                            💳 Pgto: {{ troca.forma_pagamento_diferenca if troca.forma_pagamento_diferenca is defined else troca.get('forma_pagamento_diferenca', 'N/A') }}
+                                            {% set num_parcelas = troca.parcelas if troca.parcelas is defined else troca.get('parcelas', 1) %}
+                                            {% if num_parcelas|int > 1 %}
+                                                ({{ num_parcelas }}x)
+                                            {% endif %}
+                                        </span>
                                     </div>
 
                                 {% else %}
@@ -291,8 +279,8 @@
 
                             <div>
                                 <hr>
-                                <strong>💰 Valor da Nova Compra: R$ {{ troca.total_compra }}</strong>
-                                <span style="display: block; font-size: 14px; color: #666;">💵 Crédito do cliente: R$ {{ troca.credito }}</span>
+                                <strong>💰 Valor da Nova Compra: R$ {{ "%.2f"|format(troca.total_compra|float) }}</strong>
+                                <span style="display: block; font-size: 14px; color: #666;">💵 Crédito do cliente: R$ {{ "%.2f"|format(troca.credito|float) }}</span>
                                 <small>🕒 {{ troca.data }}</small>
                             </div>
                         </div>
@@ -306,7 +294,7 @@
     </div>
 </div>
 
-<!-- 🌟 MODAL DE MOTIVO DO CANCELAMENTO -->
+<!-- MODAL DE CANCELAMENTO -->
 <div id="modalCancelamento" class="modal-overlay">
     <div class="modal-container">
         <h3>⚠️ Cancelar Venda</h3>
@@ -330,10 +318,10 @@
         </div>
     </div>
 </div>
+
 <script>
 let vendaIdParaCancelar = null;
 
-// Função para alternar entre as telas de Vendas e Trocas
 function alternarAba(secao, botao) {
     document.querySelectorAll('.secao-historico').forEach(s => s.classList.remove('ativa'));
     document.querySelectorAll('.btn-aba').forEach(b => b.classList.remove('ativa'));
@@ -342,11 +330,10 @@ function alternarAba(secao, botao) {
     botao.classList.add('ativa');
 }
 
-// Filtro de Pesquisa Inteligente
 const pesquisa = document.getElementById("pesquisa");
 if (pesquisa) {
     pesquisa.addEventListener("input", () => {
-        const valor = pesquisa.value.toLowerCase();
+        const valor = pesquisa.value.toLowerCase().trim();
         const itens = document.querySelectorAll(".item-pesquisa");
 
         itens.forEach(item => {
@@ -360,9 +347,8 @@ if (pesquisa) {
     });
 }
 
-// Funções do Modal de Cancelamento
 function abrirModalCancelamento(vendaId) {
-    vendaIdParaCancelar = vendaId; // Salva o ID corretamente aqui!
+    vendaIdParaCancelar = vendaId;
     document.getElementById('selectMotivo').value = "";
     document.getElementById('textoOutroMotivo').value = "";
     document.getElementById('textoOutroMotivo').style.display = "none";
@@ -388,10 +374,9 @@ function confirmarCancelamento() {
     const motivoSelect = document.getElementById("selectMotivo").value;
     const motivoText = document.getElementById("textoOutroMotivo").value;
     
-    // Define qual motivo vai enviar
     let motivoFinal = motivoSelect;
     if (motivoSelect === "Outro Motivo") {
-        motivoFinal = motivoText;
+        motivoFinal = motivoText.trim();
     }
 
     if (!motivoFinal) {
@@ -399,24 +384,20 @@ function confirmarCancelamento() {
         return;
     }
 
-    // Corrigido: usando vendaIdParaCancelar!
     if (!vendaIdParaCancelar) {
         alert("⚠️ Erro: ID da venda não foi encontrado.");
         return;
     }
 
-    // Cria o formulário para enviar via POST
     const formData = new FormData();
     formData.append("motivo", motivoFinal);
 
-    // Envia a requisição para a rota do Flask
     fetch(`/cancelar-venda/${vendaIdParaCancelar}`, {
         method: "POST",
         body: formData
     })
     .then(response => {
         if (response.ok || response.redirected) {
-            // Recarrega a página para atualizar o caixa, estoque e histórico
             window.location.reload();
         } else {
             alert("❌ Erro no servidor ao tentar cancelar a venda (Código " + response.status + ")");
