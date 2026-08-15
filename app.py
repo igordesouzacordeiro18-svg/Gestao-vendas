@@ -1890,7 +1890,7 @@ with app.app_context():
         db.session.commit()
         print("✅ Coluna 'status' verificada/adicionada com sucesso!")
     except Exception:
-        db.session.rollback() # Se já existir no banco, ignora
+        db.session.rollback()
 
     try:
         db.session.execute(text("ALTER TABLE venda ADD COLUMN motivo_cancelamento TEXT;"))
@@ -1899,7 +1899,6 @@ with app.app_context():
     except Exception:
         db.session.rollback()
 
-    # 🌟 Aumenta a coluna pagamento no Render para suportar pagamento misto em JSON
     try:
         db.session.execute(text("ALTER TABLE venda ALTER COLUMN pagamento TYPE TEXT;"))
         db.session.commit()
@@ -1907,7 +1906,6 @@ with app.app_context():
     except Exception:
         db.session.rollback()
 
-    # 🌟 Adiciona a coluna desconto na tabela venda se ela ainda não existir
     try:
         db.session.execute(text("ALTER TABLE venda ADD COLUMN desconto FLOAT DEFAULT 0.0;"))
         db.session.commit()
@@ -1915,7 +1913,22 @@ with app.app_context():
     except Exception:
         db.session.rollback()
 
-    # 2. Criador automático de Admin
+    # 2. Migrações da tabela 'troca' (🌟 NOVOS CAMPOS ADICIONADOS AQUI)
+    try:
+        db.session.execute(text("ALTER TABLE troca ADD COLUMN forma_pagamento_diferenca VARCHAR(50);"))
+        db.session.commit()
+        print("✅ Coluna 'forma_pagamento_diferenca' em 'troca' verificada/adicionada!")
+    except Exception:
+        db.session.rollback()
+
+    try:
+        db.session.execute(text("ALTER TABLE troca ADD COLUMN parcelas INTEGER DEFAULT 1;"))
+        db.session.commit()
+        print("✅ Coluna 'parcelas' em 'troca' verificada/adicionada!")
+    except Exception:
+        db.session.rollback()
+
+    # 3. Criador automático de Admin
     seu_email_real = "igordesouzacordeiro18@gmail.com"
     sua_senha_real = "123123"
 
