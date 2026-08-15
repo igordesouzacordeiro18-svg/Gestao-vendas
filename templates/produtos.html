@@ -3,13 +3,11 @@
 <head>
 
     <meta charset="UTF-8">
-    <meta name="viewport"
-    content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
     <title>Produtos</title>
 
-    <link rel="stylesheet"
-    href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 
 </head>
 
@@ -89,21 +87,22 @@
 
                 </span>
 
+                <!-- EXIBE 0 CASO O ESTOQUE FIQUE MENOR OU IGUAL A ZERO -->
                 <span>
 
-                    {{ produto.estoque }}
+                    {{ produto.estoque if produto.estoque > 0 else 0 }}
 
                 </span>
 
                 <span>
 
-                    {% if produto.estoque == 0 %}
+                    {% if produto.estoque <= 0 %}
 
                         <span class="status status-zero">
                             Sem estoque
                         </span>
 
-                    {% elif produto.estoque <= produto.estoque_minimo %}
+                    {% elif produto.estoque <= (produto.estoque_minimo or 0) %}
 
                         <span class="status status-baixo">
                             Estoque baixo
