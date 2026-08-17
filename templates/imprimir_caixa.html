@@ -5,33 +5,41 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Resumo de Caixa #{{ caixa.id }}</title>
     <style>
+        /* Ajuste de margens e largura para cupom térmico */
+        @page {
+            margin: 0;
+            size: auto;
+        }
         body {
             font-family: 'Courier New', Courier, monospace;
-            width: 290px;
+            width: 270px; /* Largura ideal para não cortar e encaixar perfeito */
             margin: 0 auto;
-            padding: 5px;
-            color: #000;
-            background-color: #fff;
+            padding: 8px 4px;
+            color: #000000 !important;
+            background-color: #ffffff;
             font-size: 13px;
+            font-weight: bold; /* Deixa todo o texto em negrito puro para nitidez térmica */
+            -webkit-print-color-adjust: exact;
         }
         .text-center { text-align: center; }
-        .text-right { text-align: right; }
-        .bold { font-weight: bold; }
-        .title { font-size: 15px; margin-bottom: 8px; }
+        .bold { font-weight: 900; }
+        .title { font-size: 16px; margin-bottom: 6px; }
         
         .linha {
             display: flex;
             justify-content: space-between;
             margin: 3px 0;
+            color: #000000;
         }
         .recuo {
-            padding-left: 12px;
+            padding-left: 10px;
         }
         
+        /* Linha divisória bem marcante para a impressora esquentar o papel */
         .divisor {
             border: none;
-            border-top: 1px dashed #000;
-            margin: 8px 0;
+            border-top: 2px solid #000000;
+            margin: 6px 0;
         }
 
         .btn-imprimir {
@@ -43,10 +51,12 @@
             border-radius: 4px;
             cursor: pointer;
             width: 100%;
+            font-weight: normal;
         }
 
         @media print {
             .no-print { display: none; }
+            body { width: 100%; }
         }
     </style>
 </head>

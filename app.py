@@ -1279,6 +1279,7 @@ def relatorio_caixa():
     )
 
 
+
 @app.route("/imprimir-caixa/<int:caixa_id>")
 def imprimir_caixa(caixa_id):
     id_logado = session.get("usuario_id")
@@ -1292,64 +1293,68 @@ def imprimir_caixa(caixa_id):
 
     inicial = caixa.valor_inicial or 0.0
     
-    abertura_str = caixa.data_abertura.strftime("%d/%m/%Y %H:%M") if hasattr(caixa.data_abertura, 'strftime') else (caixa.data_abertura or "N/A")
-    fechamento_str = "Em Aberto"
-    if caixa.data_fechamento and str(caixa.data_fechamento) != "None":
-        fechamento_str = caixa.data_fechamento.strftime("%d/%m/%Y %H:%M") if hasattr(caixa.data_fechamento, 'strftime') else caixa.data_fechamento
+    abertura_str = caixa.data_abertura or "N/A"
+    fechamento_str = caixa.data_fechamento or "Em Aberto"
 
-    # Tenta buscar vendas vinculadas ao caixa_id ou pelo intervalo de datas/usuário
-    vendas_query = Venda.query.filter_by(usuario_id=id_logado)
-    if hasattr(Venda, 'caixa_id'):
-        vendas = vendas_query.filter_by(caixa_id=caixa.id).all()
-    else:
-        vendas = vendas_query.all()
+    # Busca exatamente as vendas vinculadas a este caixa que foram concluídas
+    vendas = Venda.query.filter_by(caixa_id=caixa.id, usuario_id=id_logado).all()
 
-    # Totais por forma de pagamento
     tot_dinheiro = 0.0
     tot_debito = 0.0
     tot_credito = 0.0
     tot_credito_parc = 0.0
     tot_pix = 0.0
-
     total_vendido = 0.0
 
     for v in vendas:
-        # Se as vendas forem filtradas por caixa_id ou no intervalo do caixa
-        val = getattr(v, 'total', None) or getattr(v, 'valor_total', 0.0) or 0.0
-        forma = str(getattr(v, 'forma_pagamento', '')).lower()
+        # Ignora canceladas se houver
+        if hasattr(v, 'status') and v.status == 'CANCELADA':
+            continue
 
-        # Se houver pagamento misto / detalhes adicionais
-        din_v = getattr(v, 'valor_dinheiro', 0.0) or 0.0
-        pix_v = getattr(v, 'valor_pix', 0.0) or 0.0
-        deb_v = getattr(v, 'valor_debito', 0.0) or 0.0
-        cred_v = getattr(v, 'valor_credito', 0.0) or 0.0
+        val = v.valor_total or 0.0
+        txt_pagamento = str(v.pagamento or '').strip()
 
-        if din_v or pix_v or deb_v or cred_v:
-            tot_dinheiro += din_v
-            tot_pix += pix_v
-            tot_debito += deb_v
-            tot_credito += cred_v
-            total_vendido += (din_v + pix_v + deb_v + cred_v)
-        else:
+        # Tenta interpretar caso o campo pagamento seja um JSON (pagamento misto)
+        is_json = False
+        if txt_pagamento.startswith('{') or txt_pagamento.startswith('['):
+            try:
+                dados_pag = json.loads(txt_pagamento)
+                if isinstance(dados_pag, dict):
+                    is_json = True
+                    din = float(dados_pag.get('dinheiro', 0) or 0)
+                    pix = float(dados_pag.get('pix', 0) or 0)
+                    deb = float(dados_pag.get('debito', 0) or 0)
+                    cred = float(dados_pag.get('credito', 0) or 0)
+                    
+                    tot_dinheiro += din
+                    tot_pix += pix
+                    tot_debito += deb
+                    tot_credito += cred
+                    total_vendido += (din + pix + deb + cred)
+            except Exception:
+                is_json = False
+
+        if not is_json:
             total_vendido += val
-            if 'dinheiro' in forma:
-                tot_dinheiro += val
-            elif 'pix' in forma:
+            pag_lower = txt_pagamento.lower()
+
+            if 'pix' in pag_lower:
                 tot_pix += val
-            elif 'débito' in forma or 'debito' in forma:
+            elif 'débito' in pag_lower or 'debito' in pag_lower:
                 tot_debito += val
-            elif 'parcelado' in forma:
+            elif 'parcelado' in pag_lower:
                 tot_credito_parc += val
-            elif 'crédito' in forma or 'credito' in forma:
+            elif 'crédito' in pag_lower or 'credito' in pag_lower or 'cartao' in pag_lower or 'cartão' in pag_lower:
                 tot_credito += val
             else:
+                # Se for realmente dinheiro ou não especificado
                 tot_dinheiro += val
 
-    # Se total_vendido do loop for 0, usa o registrado no caixa
-    if total_vendido == 0:
-        total_vendido = getattr(caixa, 'vendas_periodo', 0.0) or getattr(caixa, 'total_vendas', 0.0) or 0.0
+    # Caso a soma das vendas dê 0 mas exista registro no caixa
+    if total_vendido == 0 and (caixa.vendas_periodo or 0) > 0:
+        total_vendido = caixa.vendas_periodo
 
-    final = caixa.saldo_final if caixa.saldo_final > 0 else (inicial + total_vendido)
+    final = caixa.saldo_final if (caixa.saldo_final or 0) > 0 else (inicial + total_vendido)
 
     dados_relatorio = {
         "id": caixa.id,
@@ -1367,7 +1372,6 @@ def imprimir_caixa(caixa_id):
         "retiradas": "0.00",
         "vendas_fiado": "0.00",
         "saldo_total": f"{final:.2f}",
-        # Detalhes por meio de pagamento (Dinheiro inclui fundo inicial nas Entradas)
         "dinheiro_entrada": f"{(tot_dinheiro + inicial):.2f}",
         "dinheiro_saida": "0.00",
         "dinheiro_saldo": f"{(tot_dinheiro + inicial):.2f}",
@@ -1378,6 +1382,7 @@ def imprimir_caixa(caixa_id):
     }
 
     return render_template("imprimir_caixa.html", caixa=dados_relatorio)
+
 @app.route("/relatorio-graficos")
 @apenas_admin
 def relatorio_graficos():
