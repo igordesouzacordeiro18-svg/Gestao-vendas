@@ -5,41 +5,45 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Resumo de Caixa #{{ caixa.id }}</title>
     <style>
-        /* Ajuste de margens e largura para cupom térmico */
         @page {
             margin: 0;
             size: auto;
         }
+        * {
+            -webkit-font-smoothing: none;
+            -moz-osx-font-smoothing: unset;
+        }
         body {
-            font-family: 'Courier New', Courier, monospace;
-            width: 270px; /* Largura ideal para não cortar e encaixar perfeito */
+            font-family: Consolas, 'Courier New', Courier, monospace;
+            width: 250px; /* Largura reduzida para ajuste perfeito */
             margin: 0 auto;
-            padding: 8px 4px;
+            padding: 4px 2px;
             color: #000000 !important;
             background-color: #ffffff;
             font-size: 13px;
-            font-weight: bold; /* Deixa todo o texto em negrito puro para nitidez térmica */
+            font-weight: 900; /* Texto super escuro/forte */
+            line-height: 1.25;
             -webkit-print-color-adjust: exact;
         }
         .text-center { text-align: center; }
         .bold { font-weight: 900; }
-        .title { font-size: 16px; margin-bottom: 6px; }
+        .title { font-size: 16px; margin-bottom: 6px; letter-spacing: 0.5px; }
         
         .linha {
             display: flex;
             justify-content: space-between;
-            margin: 3px 0;
+            margin: 2px 0;
             color: #000000;
+            font-weight: 900;
         }
         .recuo {
-            padding-left: 10px;
+            padding-left: 8px;
         }
         
-        /* Linha divisória bem marcante para a impressora esquentar o papel */
         .divisor {
             border: none;
             border-top: 2px solid #000000;
-            margin: 6px 0;
+            margin: 5px 0;
         }
 
         .btn-imprimir {
@@ -51,7 +55,7 @@
             border-radius: 4px;
             cursor: pointer;
             width: 100%;
-            font-weight: normal;
+            font-weight: bold;
         }
 
         @media print {
