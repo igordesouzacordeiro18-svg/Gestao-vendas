@@ -9,41 +9,47 @@
             margin: 0;
             size: auto;
         }
+        
         * {
-            -webkit-font-smoothing: none;
-            -moz-osx-font-smoothing: unset;
+            box-sizing: border-box;
         }
+
         body {
-            font-family: Consolas, 'Courier New', Courier, monospace;
-            width: 250px; /* Largura reduzida para ajuste perfeito */
+            /* Fonte sans-serif encorpada para queimar bem na impressora térmica */
+            font-family: 'Arial Black', Arial, Helvetica, sans-serif;
+            width: 220px; /* Largura reduzida e fixa para a folha */
             margin: 0 auto;
-            padding: 4px 2px;
+            padding: 6px 2px;
             color: #000000 !important;
             background-color: #ffffff;
             font-size: 13px;
-            font-weight: 900; /* Texto super escuro/forte */
-            line-height: 1.25;
+            font-weight: 900;
+            line-height: 1.3;
             -webkit-print-color-adjust: exact;
         }
+
         .text-center { text-align: center; }
         .bold { font-weight: 900; }
-        .title { font-size: 16px; margin-bottom: 6px; letter-spacing: 0.5px; }
+        .title { font-size: 15px; margin-bottom: 6px; text-transform: uppercase; }
         
         .linha {
             display: flex;
             justify-content: space-between;
-            margin: 2px 0;
+            margin: 3px 0;
             color: #000000;
             font-weight: 900;
         }
+        
         .recuo {
             padding-left: 8px;
+            font-size: 12px;
         }
         
+        /* Linha divisória preta grossa */
         .divisor {
             border: none;
-            border-top: 2px solid #000000;
-            margin: 5px 0;
+            border-top: 2.5px solid #000000;
+            margin: 6px 0;
         }
 
         .btn-imprimir {
@@ -60,7 +66,10 @@
 
         @media print {
             .no-print { display: none; }
-            body { width: 100%; }
+            body { 
+                width: 220px !important; /* Mantém os 220px fixos no papel */
+                margin: 0 auto !important;
+            }
         }
     </style>
 </head>
