@@ -1285,26 +1285,99 @@ def imprimir_caixa(caixa_id):
     if not id_logado:
         return redirect("/")
 
+    usuario = Usuario.query.get(id_logado)
+    operador = usuario.nome if usuario and hasattr(usuario, 'nome') else "Operador"
+
     caixa = Caixa.query.filter_by(id=caixa_id, usuario_id=id_logado).first_or_404()
 
     inicial = caixa.valor_inicial or 0.0
-    vendas = getattr(caixa, 'vendas_periodo', None) or getattr(caixa, 'total_vendas', None) or getattr(caixa, 'vendas', 0.0)
-    final = caixa.saldo_final or (inicial + vendas)
+    
+    abertura_str = caixa.data_abertura.strftime("%d/%m/%Y %H:%M") if hasattr(caixa.data_abertura, 'strftime') else (caixa.data_abertura or "N/A")
+    fechamento_str = "Em Aberto"
+    if caixa.data_fechamento and str(caixa.data_fechamento) != "None":
+        fechamento_str = caixa.data_fechamento.strftime("%d/%m/%Y %H:%M") if hasattr(caixa.data_fechamento, 'strftime') else caixa.data_fechamento
 
-    abertura = caixa.data_abertura.strftime("%d/%m/%Y %H:%M") if hasattr(caixa.data_abertura, 'strftime') else (caixa.data_abertura or "N/A")
-    fechamento = caixa.data_fechamento.strftime("%d/%m/%Y %H:%M") if hasattr(caixa.data_fechamento, 'strftime') else (caixa.data_fechamento or "Em Aberto")
+    # Tenta buscar vendas vinculadas ao caixa_id ou pelo intervalo de datas/usuário
+    vendas_query = Venda.query.filter_by(usuario_id=id_logado)
+    if hasattr(Venda, 'caixa_id'):
+        vendas = vendas_query.filter_by(caixa_id=caixa.id).all()
+    else:
+        vendas = vendas_query.all()
+
+    # Totais por forma de pagamento
+    tot_dinheiro = 0.0
+    tot_debito = 0.0
+    tot_credito = 0.0
+    tot_credito_parc = 0.0
+    tot_pix = 0.0
+
+    total_vendido = 0.0
+
+    for v in vendas:
+        # Se as vendas forem filtradas por caixa_id ou no intervalo do caixa
+        val = getattr(v, 'total', None) or getattr(v, 'valor_total', 0.0) or 0.0
+        forma = str(getattr(v, 'forma_pagamento', '')).lower()
+
+        # Se houver pagamento misto / detalhes adicionais
+        din_v = getattr(v, 'valor_dinheiro', 0.0) or 0.0
+        pix_v = getattr(v, 'valor_pix', 0.0) or 0.0
+        deb_v = getattr(v, 'valor_debito', 0.0) or 0.0
+        cred_v = getattr(v, 'valor_credito', 0.0) or 0.0
+
+        if din_v or pix_v or deb_v or cred_v:
+            tot_dinheiro += din_v
+            tot_pix += pix_v
+            tot_debito += deb_v
+            tot_credito += cred_v
+            total_vendido += (din_v + pix_v + deb_v + cred_v)
+        else:
+            total_vendido += val
+            if 'dinheiro' in forma:
+                tot_dinheiro += val
+            elif 'pix' in forma:
+                tot_pix += val
+            elif 'débito' in forma or 'debito' in forma:
+                tot_debito += val
+            elif 'parcelado' in forma:
+                tot_credito_parc += val
+            elif 'crédito' in forma or 'credito' in forma:
+                tot_credito += val
+            else:
+                tot_dinheiro += val
+
+    # Se total_vendido do loop for 0, usa o registrado no caixa
+    if total_vendido == 0:
+        total_vendido = getattr(caixa, 'vendas_periodo', 0.0) or getattr(caixa, 'total_vendas', 0.0) or 0.0
+
+    final = caixa.saldo_final if caixa.saldo_final > 0 else (inicial + total_vendido)
 
     dados_relatorio = {
         "id": caixa.id,
-        "abertura": abertura,
-        "fechamento": fechamento,
-        "valor_inicial": f"{inicial:.2f}",
-        "vendas": f"{vendas:.2f}",
-        "saldo_final": f"{final:.2f}"
+        "operador": operador,
+        "abertura": abertura_str,
+        "fechamento": fechamento_str,
+        "total_vendido": f"{total_vendido:.2f}",
+        "dinheiro": f"{tot_dinheiro:.2f}",
+        "debito": f"{tot_debito:.2f}",
+        "credito": f"{tot_credito:.2f}",
+        "credito_parcelado": f"{tot_credito_parc:.2f}",
+        "pix": f"{tot_pix:.2f}",
+        "entradas": f"{inicial:.2f}",
+        "taxa_servico": "0.00",
+        "retiradas": "0.00",
+        "vendas_fiado": "0.00",
+        "saldo_total": f"{final:.2f}",
+        # Detalhes por meio de pagamento (Dinheiro inclui fundo inicial nas Entradas)
+        "dinheiro_entrada": f"{(tot_dinheiro + inicial):.2f}",
+        "dinheiro_saida": "0.00",
+        "dinheiro_saldo": f"{(tot_dinheiro + inicial):.2f}",
+        "debito_saldo": f"{tot_debito:.2f}",
+        "credito_saldo": f"{tot_credito:.2f}",
+        "credito_parc_saldo": f"{tot_credito_parc:.2f}",
+        "pix_saldo": f"{tot_pix:.2f}",
     }
 
     return render_template("imprimir_caixa.html", caixa=dados_relatorio)
-
 @app.route("/relatorio-graficos")
 @apenas_admin
 def relatorio_graficos():

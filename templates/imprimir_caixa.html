@@ -3,49 +3,37 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Relatório de Caixa #{{ caixa.id }}</title>
+    <title>Resumo de Caixa #{{ caixa.id }}</title>
     <style>
         body {
             font-family: 'Courier New', Courier, monospace;
-            width: 300px;
+            width: 290px;
             margin: 0 auto;
-            padding: 10px;
+            padding: 5px;
             color: #000;
             background-color: #fff;
-        }
-        .header {
-            text-align: center;
-            border-bottom: 1px dashed #000;
-            padding-bottom: 10px;
-            margin-bottom: 10px;
-        }
-        .header h2 {
-            margin: 0 0 5px 0;
-            font-size: 18px;
-        }
-        .header p {
-            margin: 0;
             font-size: 13px;
         }
+        .text-center { text-align: center; }
+        .text-right { text-align: right; }
+        .bold { font-weight: bold; }
+        .title { font-size: 15px; margin-bottom: 8px; }
+        
         .linha {
             display: flex;
             justify-content: space-between;
-            margin: 6px 0;
-            font-size: 13px;
+            margin: 3px 0;
         }
-        .total {
+        .recuo {
+            padding-left: 12px;
+        }
+        
+        .divisor {
+            border: none;
             border-top: 1px dashed #000;
-            border-bottom: 1px dashed #000;
-            padding: 8px 0;
-            margin-top: 10px;
-            font-weight: bold;
-            font-size: 15px;
+            margin: 8px 0;
         }
-        .footer {
-            text-align: center;
-            margin-top: 15px;
-            font-size: 11px;
-        }
+
         .btn-imprimir {
             margin-top: 15px;
             padding: 8px 16px;
@@ -54,8 +42,9 @@
             border: none;
             border-radius: 4px;
             cursor: pointer;
-            font-size: 13px;
+            width: 100%;
         }
+
         @media print {
             .no-print { display: none; }
         }
@@ -63,41 +52,163 @@
 </head>
 <body onload="window.print()">
 
-    <div class="header">
-        <h2>🧾 RELATÓRIO DE CAIXA</h2>
-        <p>Registro #{{ caixa.id }}</p>
+    <div class="text-center">
+        <div class="bold title">RESUMO DE CAIXA</div>
     </div>
 
     <div class="linha">
-        <span>Abertura:</span>
+        <span>Caixa</span>
+        <span>{{ caixa.operador }}</span>
+    </div>
+    <div class="linha">
+        <span>Abertura</span>
         <span>{{ caixa.abertura }}</span>
     </div>
     <div class="linha">
-        <span>Fechamento:</span>
+        <span>Fechamento</span>
         <span>{{ caixa.fechamento }}</span>
     </div>
 
-    <hr style="border: none; border-top: 1px dashed #000; margin: 10px 0;">
+    <hr class="divisor">
+
+    <div class="linha bold">
+        <span>Total vendido (+)</span>
+        <span>R$ {{ caixa.total_vendido }}</span>
+    </div>
+    <div class="linha recuo">
+        <span>DINHEIRO</span>
+        <span>R$ {{ caixa.dinheiro }}</span>
+    </div>
+    <div class="linha recuo">
+        <span>DÉBITO</span>
+        <span>R$ {{ caixa.debito }}</span>
+    </div>
+    <div class="linha recuo">
+        <span>CRÉDITO</span>
+        <span>R$ {{ caixa.credito }}</span>
+    </div>
+    <div class="linha recuo">
+        <span>CRÉDITO PARCELADO</span>
+        <span>R$ {{ caixa.credito_parcelado }}</span>
+    </div>
+    <div class="linha recuo">
+        <span>PIX</span>
+        <span>R$ {{ caixa.pix }}</span>
+    </div>
 
     <div class="linha">
-        <span>Fundo Inicial:</span>
-        <span>R$ {{ caixa.valor_inicial }}</span>
+        <span>Recebimentos (+)</span>
+        <span>R$ 0.00</span>
     </div>
     <div class="linha">
-        <span>Vendas do Período:</span>
-        <span>R$ {{ caixa.vendas }}</span>
+        <span>Entradas (+)</span>
+        <span>R$ {{ caixa.entradas }}</span>
+    </div>
+    <div class="linha">
+        <span>Taxa de serviço (+)</span>
+        <span>R$ {{ caixa.taxa_servico }}</span>
+    </div>
+    <div class="linha">
+        <span>Retiradas (-)</span>
+        <span>R$ {{ caixa.retiradas }}</span>
+    </div>
+    <div class="linha">
+        <span>Vendas fiado (-)</span>
+        <span>R$ {{ caixa.vendas_fiado }}</span>
     </div>
 
-    <div class="linha total">
-        <span>SALDO FINAL:</span>
-        <span>R$ {{ caixa.saldo_final }}</span>
+    <div class="linha bold" style="margin-top: 4px;">
+        <span>Saldo (=)</span>
+        <span>R$ {{ caixa.saldo_total }}</span>
     </div>
 
-    <div class="footer">
-        <p>Reimpressão emitida em:<br>
-            <script>document.write(new Date().toLocaleString('pt-BR'));</script>
-        </p>
-        <button class="no-print btn-imprimir" onclick="window.print()">🖨️ Imprimir Novamente</button>
+    <hr class="divisor">
+
+    <!-- Dinheiro -->
+    <div class="text-center bold">Dinheiro</div>
+    <div class="linha">
+        <span>Entrada (+)</span>
+        <span>R$ {{ caixa.dinheiro_entrada }}</span>
+    </div>
+    <div class="linha">
+        <span>Saída (-)</span>
+        <span>R$ {{ caixa.dinheiro_saida }}</span>
+    </div>
+    <div class="linha bold">
+        <span>Saldo (=)</span>
+        <span>R$ {{ caixa.dinheiro_saldo }}</span>
+    </div>
+
+    <hr class="divisor">
+
+    <!-- Débito -->
+    <div class="text-center bold">Débito</div>
+    <div class="linha">
+        <span>Entrada (+)</span>
+        <span>R$ {{ caixa.debito }}</span>
+    </div>
+    <div class="linha">
+        <span>Saída (-)</span>
+        <span>R$ 0.00</span>
+    </div>
+    <div class="linha bold">
+        <span>Saldo (=)</span>
+        <span>R$ {{ caixa.debito_saldo }}</span>
+    </div>
+
+    <hr class="divisor">
+
+    <!-- Crédito -->
+    <div class="text-center bold">Crédito</div>
+    <div class="linha">
+        <span>Entrada (+)</span>
+        <span>R$ {{ caixa.credito }}</span>
+    </div>
+    <div class="linha">
+        <span>Saída (-)</span>
+        <span>R$ 0.00</span>
+    </div>
+    <div class="linha bold">
+        <span>Saldo (=)</span>
+        <span>R$ {{ caixa.credito_saldo }}</span>
+    </div>
+
+    <hr class="divisor">
+
+    <!-- Crédito Parcelado -->
+    <div class="text-center bold">Crédito Parcelado</div>
+    <div class="linha">
+        <span>Entrada (+)</span>
+        <span>R$ {{ caixa.credito_parcelado }}</span>
+    </div>
+    <div class="linha">
+        <span>Saída (-)</span>
+        <span>R$ 0.00</span>
+    </div>
+    <div class="linha bold">
+        <span>Saldo (=)</span>
+        <span>R$ {{ caixa.credito_parc_saldo }}</span>
+    </div>
+
+    <hr class="divisor">
+
+    <!-- Pix -->
+    <div class="text-center bold">Pix</div>
+    <div class="linha">
+        <span>Entrada (+)</span>
+        <span>R$ {{ caixa.pix }}</span>
+    </div>
+    <div class="linha">
+        <span>Saída (-)</span>
+        <span>R$ 0.00</span>
+    </div>
+    <div class="linha bold">
+        <span>Saldo (=)</span>
+        <span>R$ {{ caixa.pix_saldo }}</span>
+    </div>
+
+    <div class="no-print">
+        <button class="btn-imprimir" onclick="window.print()">🖨️ Imprimir Novamente</button>
     </div>
 
 </body>
