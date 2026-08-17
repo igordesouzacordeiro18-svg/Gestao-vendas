@@ -1,19 +1,11 @@
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
-
     <meta charset="UTF-8">
-
-    <meta name="viewport"
-    content="width=device-width, initial-scale=1.0">
-
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Histórico de Caixa</title>
-
-    <link rel="stylesheet"
-    href="{{ url_for('static', filename='style.css') }}">
-
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
-
 <body>
 
 <div class="layout">
@@ -25,59 +17,42 @@
         <h1>💵 Histórico de Caixa</h1>
 
         <div class="banner-relatorio">
-
-            <h2>
-                📋 Fechamentos Registrados
-            </h2>
-
-            <p>
-                Exibindo os últimos 100 fechamentos.
-            </p>
-
+            <h2>📋 Fechamentos Registrados</h2>
+            <p>Exibindo os últimos 100 fechamentos.</p>
         </div>
 
         <table class="tabela-caixa">
-
             <tr>
-
                 <th>Abertura</th>
                 <th>Fechamento</th>
                 <th>Valor Inicial</th>
                 <th>Vendas</th>
                 <th>Saldo Final</th>
-
+                <th>Ação</th>
             </tr>
 
             {% for caixa in historico_caixa %}
-
             <tr>
-
                 <td>{{ caixa.data_abertura }}</td>
-
                 <td>{{ caixa.data_fechamento }}</td>
-
                 <td>R$ {{ "%.2f"|format(caixa.valor_inicial) }}</td>
-
                 <td>R$ {{ "%.2f"|format(caixa.vendas) }}</td>
-
                 <td>
-                    <strong>
-                        R$ {{ "%.2f"|format(caixa.saldo_final) }}
-                    </strong>
+                    <strong>R$ {{ "%.2f"|format(caixa.saldo_final) }}</strong>
                 </td>
-
+                <td>
+                    <a href="/imprimir-caixa/{{ caixa.id }}" target="_blank" style="background-color: #2563eb; color: white; padding: 5px 10px; border-radius: 4px; text-decoration: none; font-size: 0.85em; display: inline-block;">
+                        🖨️ Imprimir
+                    </a>
+                </td>
             </tr>
-
             {% else %}
-
             <tr>
-                <td colspan="5" style="text-align: center; color: #64748b; padding: 20px;">
+                <td colspan="6" style="text-align: center; color: #64748b; padding: 20px;">
                     Nenhum registro de caixa encontrado.
                 </td>
             </tr>
-
             {% endfor %}
-
         </table>
 
     </div>

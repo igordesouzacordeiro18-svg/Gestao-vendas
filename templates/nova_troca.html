@@ -80,24 +80,51 @@
                 <label style="display:block; margin-bottom: 5px; font-weight: bold;">
                     Forma de pagamento da diferença:
                 </label>
-                <select id="formaPagamento" onchange="monitorarParcelas()" style="width: 100%; padding: 8px; border-radius: 5px; margin-bottom: 10px;">
-                    <option value="">Selecione...</option>
-                    <option value="Dinheiro">💵 Dinheiro</option>
-                    <option value="Pix">📱 Pix</option>
-                    <option value="Cartão de Crédito">💳 Cartão de Crédito</option>
-                    <option value="Cartão de Débito">💳 Cartão de Débito</option>
-                </select>
 
-                <div id="divParcelas" style="display: none; margin-top: 10px;">
-                    <label style="display:block; margin-bottom: 5px; font-weight: bold;">Parcelamento:</label>
-                    <select id="parcelas" style="width: 100%; padding: 8px; border-radius: 5px;">
-                        <option value="1">1x (À vista)</option>
-                        <option value="2">2x sem juros</option>
-                        <option value="3">3x sem juros</option>
-                        <option value="4">4x sem juros</option>
-                        <option value="5">5x sem juros</option>
-                        <option value="6">6x sem juros</option>
+                <!-- Pagamento Único / Misto Selector -->
+                <div style="margin-bottom: 10px;">
+                    <label><input type="radio" name="tipoPagamento" value="unico" checked onchange="trocarTipoPagamento()"> Pagamento Único</label>
+                    <label style="margin-left: 15px;"><input type="radio" name="tipoPagamento" value="misto" onchange="trocarTipoPagamento()"> Pagamento Misto/Múltiplo</label>
+                </div>
+
+                <!-- Bloco Pagamento Único -->
+                <div id="blocoUnico">
+                    <select id="formaPagamento" onchange="monitorarParcelas()" style="width: 100%; padding: 8px; border-radius: 5px; margin-bottom: 10px;">
+                        <option value="">Selecione...</option>
+                        <option value="Dinheiro">💵 Dinheiro</option>
+                        <option value="Pix">📱 Pix</option>
+                        <option value="Cartão de Crédito">💳 Cartão de Crédito</option>
+                        <option value="Cartão de Débito">💳 Cartão de Débito</option>
                     </select>
+
+                    <div id="divParcelas" style="display: none; margin-top: 10px;">
+                        <label style="display:block; margin-bottom: 5px; font-weight: bold;">Parcelamento:</label>
+                        <select id="parcelas" style="width: 100%; padding: 8px; border-radius: 5px;">
+                            <option value="1">1x (À vista)</option>
+                            <option value="2">2x sem juros</option>
+                            <option value="3">3x sem juros</option>
+                            <option value="4">4x sem juros</option>
+                            <option value="5">5x sem juros</option>
+                            <option value="6">6x sem juros</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Bloco Pagamento Misto -->
+                <div id="blocoMisto" style="display: none; background: #f9f9f9; padding: 10px; border-radius: 8px; border: 1px solid #ddd;">
+                    <p style="font-size: 0.9em; margin-bottom: 8px;">Adicione as formas de pagamento até cobrir o valor faltante:</p>
+                    <div style="display: flex; gap: 5px; margin-bottom: 10px;">
+                        <select id="mistoForma" style="flex: 1; padding: 5px;">
+                            <option value="Dinheiro">💵 Dinheiro</option>
+                            <option value="Pix">📱 Pix</option>
+                            <option value="Cartão de Crédito">💳 Cartão de Crédito</option>
+                            <option value="Cartão de Débito">💳 Cartão de Débito</option>
+                        </select>
+                        <input type="number" id="mistoValor" placeholder="Valor (R$)" step="0.01" style="width: 100px; padding: 5px;">
+                        <button type="button" onclick="adicionarPagamentoMisto()">➕</button>
+                    </div>
+                    <div id="listaPagamentosMistos" style="margin-bottom: 10px;"></div>
+                    <strong>Total Informado: <span id="mistoTotalInformado">R$ 0,00</span></strong>
                 </div>
             </div>
 
@@ -111,13 +138,12 @@
 </div>
 
 <script>
-// 1. Variáveis Globais de Controle
 let devolvidos = [];
 let credito = 0;
 let novosProdutos = [];
 let totalCompra = 0;
+let pagamentosMistos = [];
 
-// 2. Funções para Gerenciar Itens Devolvidos
 function adicionarDevolvido(){
     const select = document.getElementById("produtoDevolvido");
     const option = select.options[select.selectedIndex];
@@ -126,13 +152,7 @@ function adicionarDevolvido(){
     const nome = option.dataset.nome;
     const quantidade = parseInt(document.getElementById("quantidadeDevolvida").value);
 
-    devolvidos.push({
-        id,
-        nome,
-        preco,
-        quantidade
-    });
-
+    devolvidos.push({ id, nome, preco, quantidade });
     atualizarDevolvidos();
 }
 
@@ -144,12 +164,9 @@ function atualizarDevolvidos(){
     devolvidos.forEach((item, index) => {
         const subtotal = item.preco * item.quantidade;
         credito += subtotal;
-
         lista.innerHTML += `
             <div class="item-troca">
-                <span>
-                    ${item.nome} - ${item.quantidade}x = R$ ${subtotal.toFixed(2)}
-                </span>
+                <span>${item.nome} - ${item.quantidade}x = R$ ${subtotal.toFixed(2)}</span>
                 <button onclick="removerDevolvido(${index})">❌</button>
             </div>
         `;
@@ -164,7 +181,6 @@ function removerDevolvido(index){
     atualizarDevolvidos();
 }
 
-// 3. Funções para Gerenciar Novos Produtos Selecionados
 function adicionarNovo(){
     const select = document.getElementById("produtoNovo");
     const option = select.options[select.selectedIndex];
@@ -173,13 +189,7 @@ function adicionarNovo(){
     const nome = option.dataset.nome;
     const quantidade = parseInt(document.getElementById("quantidadeNova").value);
 
-    novosProdutos.push({
-        id,
-        nome,
-        preco,
-        quantidade
-    });
-
+    novosProdutos.push({ id, nome, preco, quantidade });
     atualizarNovos();
 }
 
@@ -191,12 +201,9 @@ function atualizarNovos(){
     novosProdutos.forEach((item, index) => {
         const subtotal = item.preco * item.quantidade;
         totalCompra += subtotal;
-
         lista.innerHTML += `
             <div class="item-troca">
-                <span>
-                    ${item.nome} - ${item.quantidade}x = R$ ${subtotal.toFixed(2)}
-                </span>
+                <span>${item.nome} - ${item.quantidade}x = R$ ${subtotal.toFixed(2)}</span>
                 <button onclick="removerNovo(${index})">❌</button>
             </div>
         `;
@@ -211,7 +218,6 @@ function removerNovo(index){
     atualizarNovos();
 }
 
-// 4. Lógica de Negócio e Validação de Telas (Interface)
 function atualizarResumo(){
     document.getElementById("creditoResumo").innerText = "Crédito: R$ " + credito.toFixed(2);
     document.getElementById("compraResumo").innerText = "Nova compra: R$ " + totalCompra.toFixed(2);
@@ -222,7 +228,6 @@ function atualizarResumo(){
     const opcaoSobra = document.getElementById("opcaoSobra");
     const botao = document.getElementById("btnFinalizarTroca");
 
-    // Se as listas estiverem vazias, bloqueia a tela
     if (devolvidos.length === 0 || novosProdutos.length === 0) {
         resultado.innerText = "Aguardando produtos...";
         if(campoPagamento) campoPagamento.style.display = "none";
@@ -232,16 +237,13 @@ function atualizarResumo(){
     }
 
     if (diferenca > 0) {
-        // SOBRAM R$: Libera o botão APENAS se o checkbox "Abrir mão" estiver ativo
         resultado.innerText = "🟢 Sobram R$ " + diferenca.toFixed(2);
         if(opcaoSobra) opcaoSobra.style.display = "block"; 
         if(campoPagamento) campoPagamento.style.display = "none";
-        
         const checkbox = document.getElementById("abrirMaoCredito");
         botao.disabled = checkbox ? !checkbox.checked : true;
     }
     else if (diferenca < 0) {
-        // FALTAM R$: Cliente precisa cobrir a diferença. Abre os métodos de pagamento.
         resultado.innerText = "🔴 Faltam R$ " + Math.abs(diferenca).toFixed(2);
         if(opcaoSobra) {
             opcaoSobra.style.display = "none";
@@ -252,7 +254,6 @@ function atualizarResumo(){
         botao.disabled = false;
     }
     else {
-        // VALORES IGUAIS: Elas por elas, botão liberado
         resultado.innerText = "✅ Valores iguais";
         if(opcaoSobra) opcaoSobra.style.display = "none";
         if(campoPagamento) campoPagamento.style.display = "none";
@@ -260,7 +261,6 @@ function atualizarResumo(){
     }
 }
 
-// Ouvinte para reavaliar o botão assim que marcar o checkbox de "abrir mão"
 document.addEventListener("DOMContentLoaded", function() {
     const checkboxAbrirMao = document.getElementById("abrirMaoCredito");
     if (checkboxAbrirMao) {
@@ -277,34 +277,91 @@ document.addEventListener("DOMContentLoaded", function() {
 function monitorarParcelas() {
     const forma = document.getElementById("formaPagamento").value;
     const divParcelas = document.getElementById("divParcelas");
-    
     if (forma === "Cartão de Crédito") {
         divParcelas.style.display = "block";
     } else {
         divParcelas.style.display = "none";
-        document.getElementById("parcelas").value = "1"; // reseta
+        document.getElementById("parcelas").value = "1";
     }
+}
+
+function trocarTipoPagamento() {
+    const tipo = document.querySelector('input[name="tipoPagamento"]:checked').value;
+    if (tipo === 'misto') {
+        document.getElementById('blocoUnico').style.display = 'none';
+        document.getElementById('blocoMisto').style.display = 'block';
+    } else {
+        document.getElementById('blocoUnico').style.display = 'block';
+        document.getElementById('blocoMisto').style.display = 'none';
+    }
+}
+
+function adicionarPagamentoMisto() {
+    const forma = document.getElementById('mistoForma').value;
+    const valor = parseFloat(document.getElementById('mistoValor').value);
+
+    if (!valor || valor <= 0) {
+        alert("Informe um valor válido!");
+        return;
+    }
+
+    pagamentosMistos.push({ forma, valor });
+    document.getElementById('mistoValor').value = '';
+    renderizarPagamentosMistos();
+}
+
+function removerPagamentoMisto(index) {
+    pagamentosMistos.splice(index, 1);
+    renderizarPagamentosMistos();
+}
+
+function renderizarPagamentosMistos() {
+    const lista = document.getElementById('listaPagamentosMistos');
+    lista.innerHTML = '';
+    let total = 0;
+
+    pagamentosMistos.forEach((p, index) => {
+        total += p.valor;
+        lista.innerHTML += `
+            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.9em; margin-top: 4px;">
+                <span>${p.forma}: R$ ${p.valor.toFixed(2)}</span>
+                <button type="button" onclick="removerPagamentoMisto(${index})">❌</button>
+            </div>
+        `;
+    });
+
+    document.getElementById('mistoTotalInformado').innerText = "R$ " + total.toFixed(2);
 }
 
 function enviarTroca() {
     const diferenca = credito - totalCompra;
     const checkbox = document.getElementById("abrirMaoCredito");
     const abrirMaoCredito = checkbox ? checkbox.checked : false;
-    const formaPagamentoSelect = document.getElementById("formaPagamento");
     let formaPagamento = "Troca Sem Diferença";
     let qtdParcelas = 1;
 
     if (diferenca < 0) {
-        if (formaPagamentoSelect) {
-            formaPagamento = formaPagamentoSelect.value;
+        const valorFaltante = Math.abs(diferenca);
+        const tipoPagamento = document.querySelector('input[name="tipoPagamento"]:checked').value;
+
+        if (tipoPagamento === 'unico') {
+            const formaSelect = document.getElementById("formaPagamento");
+            formaPagamento = formaSelect.value;
             if (!formaPagamento) {
                 alert("❌ Por favor, selecione a forma de pagamento para o valor restante!");
-                formaPagamentoSelect.focus();
+                formaSelect.focus();
                 return;
             }
             if (formaPagamento === "Cartão de Crédito") {
                 qtdParcelas = parseInt(document.getElementById("parcelas").value || 1);
             }
+        } else {
+            const totalMisto = pagamentosMistos.reduce((acc, curr) => acc + curr.valor, 0);
+            if (Math.abs(totalMisto - valorFaltante) > 0.05) {
+                alert(`❌ O valor total dos pagamentos mistos (R$ ${totalMisto.toFixed(2)}) deve ser igual ao valor faltante (R$ ${valorFaltante.toFixed(2)})!`);
+                return;
+            }
+            formaPagamento = JSON.stringify(pagamentosMistos);
         }
     }
 
@@ -322,9 +379,7 @@ function enviarTroca() {
 
     fetch("/finalizar-troca", {
         method: "POST",
-        headers: {
-            "Content-Type": "application/json"
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(dadosTroca)
     })
     .then(response => response.json().then(data => ({ status: response.status, body: data })))

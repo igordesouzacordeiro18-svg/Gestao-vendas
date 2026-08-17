@@ -1246,7 +1246,6 @@ def relatorio_caixa():
     if not id_logado:
         return redirect("/")
 
-    # Busca os últimos 100 caixas do usuário logado
     caixas_db = Caixa.query.filter_by(usuario_id=id_logado).order_by(Caixa.id.desc()).limit(100).all()
 
     historico_caixa = []
@@ -1254,14 +1253,11 @@ def relatorio_caixa():
         inicial = c.valor_inicial or 0.0
         final = c.saldo_final or 0.0
 
-        # Tenta capturar o total de vendas registrado no caixa
         val_vendas = getattr(c, 'vendas_periodo', None) or getattr(c, 'total_vendas', None) or getattr(c, 'vendas', 0.0)
 
-        # Se o caixa foi fechado e tinha saldo, mas as vendas ficaram zeradas, calcula a diferença
         if (not val_vendas or val_vendas == 0) and final > 0:
             val_vendas = max(0.0, final - inicial)
 
-        # Formatação das Datas
         abertura = c.data_abertura.strftime("%d/%m/%Y %H:%M") if hasattr(c.data_abertura, 'strftime') else (c.data_abertura or "N/A")
         
         fechamento = "Em Aberto 🟢"
@@ -1269,6 +1265,7 @@ def relatorio_caixa():
             fechamento = c.data_fechamento.strftime("%d/%m/%Y %H:%M") if hasattr(c.data_fechamento, 'strftime') else c.data_fechamento
 
         historico_caixa.append({
+            "id": c.id,  # 👈 Passando o ID para acionar a impressão
             "data_abertura": abertura,
             "data_fechamento": fechamento,
             "valor_inicial": inicial,
@@ -1280,6 +1277,33 @@ def relatorio_caixa():
         "relatorio_caixa.html",
         historico_caixa=historico_caixa
     )
+
+
+@app.route("/imprimir-caixa/<int:caixa_id>")
+def imprimir_caixa(caixa_id):
+    id_logado = session.get("usuario_id")
+    if not id_logado:
+        return redirect("/")
+
+    caixa = Caixa.query.filter_by(id=caixa_id, usuario_id=id_logado).first_or_404()
+
+    inicial = caixa.valor_inicial or 0.0
+    vendas = getattr(caixa, 'vendas_periodo', None) or getattr(caixa, 'total_vendas', None) or getattr(caixa, 'vendas', 0.0)
+    final = caixa.saldo_final or (inicial + vendas)
+
+    abertura = caixa.data_abertura.strftime("%d/%m/%Y %H:%M") if hasattr(caixa.data_abertura, 'strftime') else (caixa.data_abertura or "N/A")
+    fechamento = caixa.data_fechamento.strftime("%d/%m/%Y %H:%M") if hasattr(caixa.data_fechamento, 'strftime') else (caixa.data_fechamento or "Em Aberto")
+
+    dados_relatorio = {
+        "id": caixa.id,
+        "abertura": abertura,
+        "fechamento": fechamento,
+        "valor_inicial": f"{inicial:.2f}",
+        "vendas": f"{vendas:.2f}",
+        "saldo_final": f"{final:.2f}"
+    }
+
+    return render_template("imprimir_caixa.html", caixa=dados_relatorio)
 
 @app.route("/relatorio-graficos")
 @apenas_admin
