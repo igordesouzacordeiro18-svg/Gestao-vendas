@@ -1096,15 +1096,12 @@ def relatorio_financeiro():
         return redirect("/")
 
     filtro = request.args.get("filtro", "hoje")
-    
-    # 🌟 Garante o fuso horário de Brasília para a data atual
     hoje = datetime.now(FUSO_BRASILIA) if 'FUSO_BRASILIA' in globals() else datetime.now()
 
     todas_vendas = Venda.query.filter_by(usuario_id=id_logado).all()
     vendas_filtradas = []
 
     for venda in todas_vendas:
-        # 🚫 Ignora vendas canceladas
         if getattr(venda, 'status', '') == 'CANCELADA':
             continue
 
@@ -1112,48 +1109,114 @@ def relatorio_financeiro():
         if not str_data:
             continue
 
-        # 🌟 Tenta converter em datetime aceitando múltiplos formatos de data
         data_venda = None
-        formatos_possiveis = ["%d/%m/%Y %H:%M:%S", "%d/%m/%Y %H:%M", "%d/%m/%Y"]
-        
-        for fmt in formatos_possiveis:
+        for fmt in ["%d/%m/%Y %H:%M:%S", "%d/%m/%Y %H:%M", "%d/%m/%Y"]:
             try:
                 data_venda = datetime.strptime(str_data, fmt)
                 break
             except (ValueError, TypeError):
                 pass
 
-        # Se mesmo assim não conseguiu converter a data, ignora esse registro
         if not data_venda:
             continue
 
-        # Aplica os filtros de data
-        if filtro == "hoje":
-            if data_venda.strftime("%d/%m/%Y") == hoje.strftime("%d/%m/%Y"):
-                vendas_filtradas.append(venda)
-        elif filtro == "semana":
-            if data_venda.isocalendar()[1] == hoje.isocalendar()[1] and data_venda.year == hoje.year:
-                vendas_filtradas.append(venda)
-        elif filtro == "mes":
-            if data_venda.month == hoje.month and data_venda.year == hoje.year:
-                vendas_filtradas.append(venda)
-        elif filtro == "ano":
-            if data_venda.year == hoje.year:
-                vendas_filtradas.append(venda)
+        if filtro == "hoje" and data_venda.strftime("%d/%m/%Y") == hoje.strftime("%d/%m/%Y"):
+            vendas_filtradas.append(venda)
+        elif filtro == "semana" and data_venda.isocalendar()[1] == hoje.isocalendar()[1] and data_venda.year == hoje.year:
+            vendas_filtradas.append(venda)
+        elif filtro == "mes" and data_venda.month == hoje.month and data_venda.year == hoje.year:
+            vendas_filtradas.append(venda)
+        elif filtro == "ano" and data_venda.year == hoje.year:
+            vendas_filtradas.append(venda)
 
-    total = sum(float(getattr(v, 'valor_total', 0) or getattr(v, 'total', 0) or 0) for v in vendas_filtradas)
-    
-    # Processa pagamentos apenas das vendas filtradas
+    total_vendas = sum(float(getattr(v, 'valor_total', 0) or getattr(v, 'total', 0) or 0) for v in vendas_filtradas)
     pix, dinheiro, cartao = processar_totais_pagamento(vendas_filtradas)
 
-    # Cálculo do Lucro
-    lucro = 0.0
+    # 🔁 PROCESSA TROCAS
+    todas_trocas = Troca.query.filter_by(usuario_id=id_logado).all()
+    total_diferenca_trocas = 0.0
+    lucro_trocas = 0.0
+
+    for troca in todas_trocas:
+        if getattr(troca, 'status', '') == 'CANCELADA':
+            continue
+
+        str_data = str(getattr(troca, 'data', '')).strip()
+        if not str_data:
+            continue
+
+        data_troca = None
+        for fmt in ["%d/%m/%Y %H:%M:%S", "%d/%m/%Y %H:%M", "%d/%m/%Y"]:
+            try:
+                data_troca = datetime.strptime(str_data, fmt)
+                break
+            except (ValueError, TypeError):
+                pass
+
+        if not data_troca:
+            continue
+
+        incluir = False
+        if filtro == "hoje" and data_troca.strftime("%d/%m/%Y") == hoje.strftime("%d/%m/%Y"):
+            incluir = True
+        elif filtro == "semana" and data_troca.isocalendar()[1] == hoje.isocalendar()[1] and data_troca.year == hoje.year:
+            incluir = True
+        elif filtro == "mes" and data_troca.month == hoje.month and data_troca.year == hoje.year:
+            incluir = True
+        elif filtro == "ano" and data_troca.year == hoje.year:
+            incluir = True
+
+        if incluir:
+            saldo = float(getattr(troca, 'saldo_diferenca', 0) or 0)
+
+            if saldo < 0:
+                valor_recebido = abs(saldo)
+                total_diferenca_trocas += valor_recebido
+                forma = str(getattr(troca, 'forma_pagamento_diferenca', '') or getattr(troca, 'forma_pagamento', '')).strip()
+
+                if "MISTO" in forma.upper():
+                    partes = forma.split("(")[-1].replace(")", "").split("|")
+                    for parte in partes:
+                        if ":" in parte:
+                            nome_f, val_f = parte.split(":", 1)
+                            nome_upper = nome_f.upper()
+                            try:
+                                val_num = float(val_f.replace("R$", "").replace(",", ".").strip())
+                            except ValueError:
+                                val_num = 0.0
+
+                            if "DINHEIRO" in nome_upper:
+                                dinheiro += val_num
+                            elif "PIX" in nome_upper:
+                                pix += val_num
+                            elif "CART" in nome_upper:
+                                cartao += val_num
+                else:
+                    f_upper = forma.upper()
+                    if "DINHEIRO" in f_upper:
+                        dinheiro += valor_recebido
+                    elif "PIX" in f_upper:
+                        pix += valor_recebido
+                    elif "CART" in f_upper:
+                        cartao += valor_recebido
+
+            try:
+                prod_recebidos = json.loads(troca.produtos_recebidos) if isinstance(troca.produtos_recebidos, str) else (troca.produtos_recebidos or [])
+                prod_devolvidos = json.loads(troca.produtos_devolvidos) if isinstance(troca.produtos_devolvidos, str) else (troca.produtos_devolvidos or [])
+
+                custo_novos = sum(float(Produto.query.filter_by(usuario_id=id_logado, nome=item.get("nome") or item.get("produto")).first().custo or 0) * int(item.get("quantidade", 0)) for item in prod_recebidos if Produto.query.filter_by(usuario_id=id_logado, nome=item.get("nome") or item.get("produto")).first())
+                custo_devolvidos = sum(float(Produto.query.filter_by(usuario_id=id_logado, nome=item.get("nome") or item.get("produto")).first().custo or 0) * int(item.get("quantidade", 0)) for item in prod_devolvidos if Produto.query.filter_by(usuario_id=id_logado, nome=item.get("nome") or item.get("produto")).first())
+
+                lucro_trocas += (abs(saldo) if saldo < 0 else 0) + custo_devolvidos - custo_novos
+            except Exception:
+                pass
+
+    total_geral = total_vendas + total_diferenca_trocas
+
+    lucro_vendas = 0.0
     for venda in vendas_filtradas:
         try:
-            if isinstance(venda.produtos_vendidos, str):
-                itens = json.loads(venda.produtos_vendidos)
-            else:
-                itens = venda.produtos_vendidos or []
+            itens = json.loads(venda.produtos_vendidos) if isinstance(venda.produtos_vendidos, str) else (venda.produtos_vendidos or [])
         except Exception:
             itens = []
 
@@ -1161,18 +1224,19 @@ def relatorio_financeiro():
             nome_prod = item.get("produto") or item.get("nome")
             qtd = int(item.get("quantidade", 0))
             preco_venda_item = float(item.get("preco_unitario", 0.0) or item.get("preco", 0.0))
-
             prod = Produto.query.filter_by(usuario_id=id_logado, nome=nome_prod).first()
             if prod and prod.custo and float(prod.custo) > 0:
-                lucro += (preco_venda_item - float(prod.custo)) * qtd
+                lucro_vendas += (preco_venda_item - float(prod.custo)) * qtd
+
+    lucro_total = lucro_vendas + lucro_trocas
 
     return render_template(
         "relatorio_financeiro.html",
-        total=f"{total:.2f}",
+        total=f"{total_geral:.2f}",
         pix=f"{pix:.2f}",
         dinheiro=f"{dinheiro:.2f}",
         cartao=f"{cartao:.2f}",
-        lucro=f"{lucro:.2f}",
+        lucro=f"{lucro_total:.2f}",
         filtro=filtro
     )
 
@@ -1228,19 +1292,58 @@ def relatorio_graficos():
     hoje = datetime.now()
 
     todas_vendas = Venda.query.filter_by(usuario_id=id_logado).all()
-    
-    # 🚫 Filtra apenas vendas ativas para os gráficos
     vendas_db = [v for v in todas_vendas if getattr(v, 'status', '') != 'CANCELADA']
 
-    # Meios de pagamento exatos (Pizza/Rosca)
+    # 1. Meios de pagamento das Vendas Padrão
     pix, dinheiro, cartao = processar_totais_pagamento(vendas_db)
+
+    # 2. ➕ Adiciona recebimentos vindos de Diferenças de Trocas
+    todas_trocas = Troca.query.filter_by(usuario_id=id_logado).all()
+    for troca in todas_trocas:
+        if getattr(troca, 'status', '') == 'CANCELADA':
+            continue
+
+        saldo = float(getattr(troca, 'saldo_diferenca', 0) or 0)
+        
+        # Considera apenas quando o cliente pagou a diferença (saldo < 0)
+        if saldo < 0:
+            valor_recebido = abs(saldo)
+            forma = str(getattr(troca, 'forma_pagamento_diferenca', '') or getattr(troca, 'forma_pagamento', '')).strip()
+
+            # Processa pagamento Misto formatado na string
+            if "MISTO" in forma.upper():
+                partes = forma.split("(")[-1].replace(")", "").split("|")
+                for parte in partes:
+                    if ":" in parte:
+                        nome_f, val_f = parte.split(":", 1)
+                        nome_upper = nome_f.upper()
+                        try:
+                            val_num = float(val_f.replace("R$", "").replace(",", ".").strip())
+                        except ValueError:
+                            val_num = 0.0
+                        
+                        if "DINHEIRO" in nome_upper:
+                            dinheiro += val_num
+                        elif "PIX" in nome_upper:
+                            pix += val_num
+                        elif "CART" in nome_upper:
+                            cartao += val_num
+            else:
+                # Pagamento único
+                f_upper = forma.upper()
+                if "DINHEIRO" in f_upper:
+                    dinheiro += valor_recebido
+                elif "PIX" in f_upper:
+                    pix += valor_recebido
+                elif "CART" in f_upper:
+                    cartao += valor_recebido
 
     vendas_por_periodo = defaultdict(float)
 
     for venda in vendas_db:
         try:
             data_venda = datetime.strptime(venda.data, "%d/%m/%Y %H:%M")
-        except:
+        except Exception:
             continue
 
         val_venda = getattr(venda, 'valor_total', 0) or getattr(venda, 'total', 0)
@@ -1274,7 +1377,7 @@ def relatorio_graficos():
     for venda in vendas_db:
         try:
             data_venda = datetime.strptime(venda.data, "%d/%m/%Y %H:%M")
-        except:
+        except Exception:
             continue
 
         if data_venda.isocalendar()[1] == semana_atual and data_venda.year == hoje.year:
@@ -1415,7 +1518,18 @@ def finalizar_troca():
     if diferenca < 0:
         caixa_atual.vendas_periodo += valor_pago_restante
 
-    # 4. Gravação no banco com os novos campos
+    # 4. Formatação amigável para exibição em caso de pagamento misto
+    if forma_pagamento.startswith("["):
+        try:
+            lista_p = json.loads(forma_pagamento)
+            texto_p = " | ".join([f"{p['forma']}: R$ {p['valor']:.2f}" for p in lista_p])
+            forma_pagamento_salvar = f"Misto ({texto_p})"
+        except Exception:
+            forma_pagamento_salvar = forma_pagamento
+    else:
+        forma_pagamento_salvar = forma_pagamento
+
+    # 5. Gravação no banco com os novos campos
     data_hoje = datetime.now().strftime("%d/%m/%Y %H:%M")
 
     nova_troca_db = Troca(
@@ -1426,7 +1540,7 @@ def finalizar_troca():
         credito=credito,
         total_compra=total_compra,
         saldo_diferenca=saldo_salvar,
-        forma_pagamento_diferenca=forma_pagamento if diferenca < 0 else "Troca Sem Diferença",
+        forma_pagamento_diferenca=forma_pagamento_salvar if diferenca < 0 else "Troca Sem Diferença",
         parcelas=parcelas if diferenca < 0 else 1
     )
     
