@@ -147,6 +147,23 @@
             cursor: pointer;
             flex: 1;
         }
+        /* Estilo do botão de impressão */
+        .rodape-card-venda {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 6px;
+        }
+        .btn-imprimir-ico {
+            text-decoration: none;
+            font-size: 16px;
+            opacity: 0.75;
+            transition: transform 0.15s, opacity 0.15s;
+        }
+        .btn-imprimir-ico:hover {
+            opacity: 1;
+            transform: scale(1.2);
+        }
     </style>
 </head>
 <body>
@@ -213,7 +230,14 @@
                         <div>
                             <span>💳 {{ venda.pagamento }}</span>
                         </div>
-                        <small>🕒 {{ venda.data }}</small>
+
+                        <!-- Rodapé do Card com Data e Botão de Impressão -->
+                        <div class="rodape-card-venda">
+                            <small>🕒 {{ venda.data }}</small>
+                            <a href="/imprimir-venda/{{ venda.id }}" target="_blank" class="btn-imprimir-ico" title="Imprimir Comprovante">
+                                🖨️
+                            </a>
+                        </div>
 
                         {% if venda.status == 'CANCELADA' %}
                             <div class="motivo-box">

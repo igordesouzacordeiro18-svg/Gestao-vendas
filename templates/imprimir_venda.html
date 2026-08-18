@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Comprovante Venda #{{ venda.id }}</title>
+    <style>
+        @page { margin: 0; size: auto; }
+        * { box-sizing: border-box; }
+        body {
+            font-family: 'Arial Black', Arial, sans-serif;
+            width: 220px;
+            margin: 0 auto;
+            padding: 6px 2px;
+            color: #000000 !important;
+            background-color: #ffffff;
+            font-size: 12px;
+            font-weight: 900;
+            line-height: 1.25;
+            -webkit-print-color-adjust: exact;
+        }
+        .text-center { text-align: center; }
+        .bold { font-weight: 900; }
+        .title { font-size: 14px; margin-bottom: 4px; text-transform: uppercase; }
+        
+        .linha {
+            display: flex;
+            justify-content: space-between;
+            margin: 3px 0;
+        }
+        
+        .divisor {
+            border: none;
+            border-top: 2px solid #000000;
+            margin: 5px 0;
+        }
+
+        .item-linha {
+            margin: 4px 0;
+        }
+        .item-nome {
+            display: block;
+            font-size: 11px;
+        }
+        .item-detalhe {
+            display: flex;
+            justify-content: space-between;
+            font-size: 11px;
+        }
+
+        .btn-imprimir {
+            margin-top: 15px;
+            padding: 8px;
+            background-color: #2563eb;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            width: 100%;
+            font-weight: bold;
+        }
+
+        @media print {
+            .no-print { display: none; }
+            body { width: 220px !important; margin: 0 auto !important; }
+        }
+    </style>
+</head>
+<body onload="window.print()">
+
+    <div class="text-center">
+        <div class="bold title">COMPROVANTE DE VENDA</div>
+        <div>Venda #{{ venda.id }}</div>
+        <div>Data: {{ venda.data }}</div>
+    </div>
+
+    <hr class="divisor">
+
+    <div class="bold" style="margin-bottom: 4px;">ITENS:</div>
+    {% for item in venda.itens %}
+    <div class="item-linha">
+        <span class="item-nome">{{ item.nome or item.produto or 'Produto' }}</span>
+        <div class="item-detalhe">
+            <span>{{ item.qtd or item.quantidade or 1 }}x R$ {{ "%.2f"|format(item.preco or item.valor or 0) }}</span>
+            <span>R$ {{ "%.2f"|format((item.qtd or item.quantidade or 1) * (item.preco or item.valor or 0)) }}</span>
+        </div>
+    </div>
+    {% else %}
+    <div class="linha">
+        <span>Itens da Venda</span>
+        <span>R$ {{ venda.total }}</span>
+    </div>
+    {% endfor %}
+
+    <hr class="divisor">
+
+    {% if venda.desconto and venda.desconto != '0.00' %}
+    <div class="linha">
+        <span>Subtotal:</span>
+        <span>R$ {{ venda.subtotal }}</span>
+    </div>
+    <div class="linha">
+        <span>Desconto:</span>
+        <span>- R$ {{ venda.desconto }}</span>
+    </div>
+    {% endif %}
+
+    <div class="linha bold" style="font-size: 13px;">
+        <span>TOTAL:</span>
+        <span>R$ {{ venda.total }}</span>
+    </div>
+
+    <div class="linha" style="margin-top: 5px;">
+        <span>Pagamento:</span>
+        <span>{{ venda.pagamento }}</span>
+    </div>
+
+    <hr class="divisor">
+
+    <div class="text-center" style="margin-top: 8px; font-size: 11px;">
+        Obrigado pela preferência!<br>Volte sempre!
+    </div>
+
+    <div class="no-print">
+        <button class="btn-imprimir" onclick="window.print()">🖨️ Imprimir Novamente</button>
+    </div>
+
+</body>
+</html>

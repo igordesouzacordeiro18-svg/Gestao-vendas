@@ -1383,6 +1383,41 @@ def imprimir_caixa(caixa_id):
 
     return render_template("imprimir_caixa.html", caixa=dados_relatorio)
 
+
+@app.route("/imprimir-venda/<int:venda_id>")
+def imprimir_venda(venda_id):
+    id_logado = session.get("usuario_id")
+    if not id_logado:
+        return redirect("/")
+
+    venda = Venda.query.filter_by(id=venda_id, usuario_id=id_logado).first_or_404()
+
+    # Trata os produtos da venda (seja JSON ou texto simples)
+    itens = []
+    if venda.produtos_vendidos:
+        try:
+            prods = json.loads(venda.produtos_vendidos)
+            if isinstance(prods, list):
+                itens = prods
+            elif isinstance(prods, dict):
+                itens = [prods]
+        except Exception:
+            itens = [{"nome": venda.produtos_vendidos, "qtd": 1, "preco": venda.valor_total}]
+
+    dados_venda = {
+        "id": venda.id,
+        "data": venda.data or "N/A",
+        "total": f"{(venda.valor_total or 0.0):.2f}",
+        "desconto": f"{(venda.desconto or 0.0):.2f}",
+        "subtotal": f"{((venda.valor_total or 0.0) + (venda.desconto or 0.0)):.2f}",
+        "pagamento": venda.pagamento or "Não informado",
+        "itens": itens
+    }
+
+    return render_template("imprimir_venda.html", venda=dados_venda)
+
+
+
 @app.route("/relatorio-graficos")
 @apenas_admin
 def relatorio_graficos():
