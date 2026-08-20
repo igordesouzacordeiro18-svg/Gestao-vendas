@@ -159,12 +159,11 @@
                 "parametros": {
                     "text": cupomTexto,
                     "alinhamento": "ESQUERDA",
-                    "fonte": "NORNAL"
+                    "fonte": "NORMAL"
                 }
             };
 
-            // Substitua a linha antiga do fetch por esta:
-            fetch('/api/imprimir-elgin', {
+            fetch('http://127.0.0.1:8080/e1/printer', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)

@@ -1458,18 +1458,6 @@ def imprimir_venda(venda_id):
 
 
 
-@app.route("/api/imprimir-elgin", methods=["POST"])
-def imprimir_elgin():
-    dados = request.get_json()
-    try:
-        # O backend repassa a requisição para a API da Elgin
-        response = requests.post(
-            "http://127.0.0.1:8080/e1/printer", json=dados, timeout=5
-        )
-        return jsonify({"status": "sucesso"}), 200
-    except Exception as e:
-        return jsonify({"status": "erro", "detalhes": str(e)}), 500
-
 
 @app.route("/relatorio-graficos")
 @apenas_admin
