@@ -9,7 +9,7 @@ from flask import Flask, render_template, request, redirect, jsonify, url_for, f
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 from itsdangerous import URLSafeTimedSerializer, SignatureExpired, BadTimeSignature
-import requests
+
 
 
 # Define a constante do fuso horário de Brasília no topo
