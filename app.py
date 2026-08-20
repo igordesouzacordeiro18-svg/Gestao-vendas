@@ -1392,7 +1392,7 @@ def imprimir_venda(venda_id):
 
     venda = Venda.query.filter_by(id=venda_id, usuario_id=id_logado).first_or_404()
 
-    # Trata os produtos da venda (seja JSON ou texto simples)
+    # Trata os produtos da venda
     itens = []
     if venda.produtos_vendidos:
         try:
@@ -1404,14 +1404,52 @@ def imprimir_venda(venda_id):
         except Exception:
             itens = [{"nome": venda.produtos_vendidos, "qtd": 1, "preco": venda.valor_total}]
 
+    # Trata os preços dos itens para garantir que sejam numéricos
+    itens_formatados = []
+    for item in itens:
+        nome = item.get("nome") or item.get("produto") or "Produto"
+        qtd = float(item.get("qtd") or item.get("quantidade") or 1)
+        
+        # Busca o preço unitário em todas as variações de chaves possíveis
+        preco = float(
+            item.get("preco") or 
+            item.get("preco_unitario") or 
+            item.get("valor") or 
+            (float(item.get("subtotal", 0)) / qtd if qtd > 0 else 0)
+        )
+        
+        subtotal = float(item.get("subtotal") or (qtd * preco))
+
+        itens_formatados.append({
+            "nome": nome,
+            "qtd": qtd,
+            "preco": preco,
+            "subtotal": subtotal
+        })
+
+    # Trata o campo de pagamento para remover a estrutura JSON
+    pagamento_str = "Não informado"
+    if venda.pagamento:
+        if isinstance(venda.pagamento, str) and (venda.pagamento.startswith("[") or venda.pagamento.startswith("{")):
+            try:
+                pag_dados = json.loads(venda.pagamento)
+                if isinstance(pag_dados, list) and len(pag_dados) > 0:
+                    pagamento_str = pag_dados[0].get("tipo") or pag_dados[0].get("forma") or str(pag_dados[0])
+                elif isinstance(pag_dados, dict):
+                    pagamento_str = pag_dados.get("tipo") or pag_dados.get("forma") or str(pag_dados)
+            except Exception:
+                pagamento_str = venda.pagamento
+        else:
+            pagamento_str = str(venda.pagamento)
+
     dados_venda = {
         "id": venda.id,
         "data": venda.data or "N/A",
         "total": f"{(venda.valor_total or 0.0):.2f}",
         "desconto": f"{(venda.desconto or 0.0):.2f}",
         "subtotal": f"{((venda.valor_total or 0.0) + (venda.desconto or 0.0)):.2f}",
-        "pagamento": venda.pagamento or "Não informado",
-        "itens": itens
+        "pagamento": pagamento_str,
+        "itens": itens_formatados
     }
 
     return render_template("imprimir_venda.html", venda=dados_venda)

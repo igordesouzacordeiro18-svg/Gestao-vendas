@@ -66,7 +66,7 @@
         }
     </style>
 </head>
-<body onload="window.print()">
+<body onload="enviarParaImpressoraElgin()">
 
     <div class="text-center">
         <div class="bold title">COMPROVANTE DE VENDA</div>
@@ -79,10 +79,10 @@
     <div class="bold" style="margin-bottom: 4px;">ITENS:</div>
     {% for item in venda.itens %}
     <div class="item-linha">
-        <span class="item-nome">{{ item.nome or item.produto or 'Produto' }}</span>
+        <span class="item-nome">{{ item.nome }}</span>
         <div class="item-detalhe">
-            <span>{{ item.qtd or item.quantidade or 1 }}x R$ {{ "%.2f"|format(item.preco or item.valor or 0) }}</span>
-            <span>R$ {{ "%.2f"|format((item.qtd or item.quantidade or 1) * (item.preco or item.valor or 0)) }}</span>
+            <span>{{ "%.0f"|format(item.qtd) }}x R$ {{ "%.2f"|format(item.preco) }}</span>
+            <span>R$ {{ "%.2f"|format(item.subtotal) }}</span>
         </div>
     </div>
     {% else %}
@@ -122,8 +122,60 @@
     </div>
 
     <div class="no-print">
-        <button class="btn-imprimir" onclick="window.print()">🖨️ Imprimir Novamente</button>
+        <button class="btn-imprimir" onclick="enviarParaImpressoraElgin()">🖨️ Imprimir Novamente</button>
     </div>
 
+    <script>
+        function enviarParaImpressoraElgin() {
+            let cupomTexto = "";
+            
+            cupomTexto += "COMPROVANTE DE VENDA\n";
+            cupomTexto += "Venda #{{ venda.id }}\n";
+            cupomTexto += "Data: {{ venda.data }}\n";
+            cupomTexto += "--------------------------------\n";
+            cupomTexto += "ITENS:\n";
+
+            {% for item in venda.itens %}
+            cupomTexto += "{{ item.nome }}\n";
+            cupomTexto += "  {{ '%.0f'|format(item.qtd) }}x R$ {{ '%.2f'|format(item.preco) }} = R$ {{ '%.2f'|format(item.subtotal) }}\n";
+            {% else %}
+            cupomTexto += "Itens da Venda: R$ {{ venda.total }}\n";
+            {% endfor %}
+
+            cupomTexto += "--------------------------------\n";
+
+            {% if venda.desconto and venda.desconto != '0.00' %}
+            cupomTexto += "Subtotal: R$ {{ venda.subtotal }}\n";
+            cupomTexto += "Desconto: - R$ {{ venda.desconto }}\n";
+            {% endif %}
+
+            cupomTexto += "TOTAL: R$ {{ venda.total }}\n";
+            cupomTexto += "Pagamento: {{ venda.pagamento }}\n";
+            cupomTexto += "--------------------------------\n";
+            cupomTexto += "Obrigado pela preferencia!\nVolte sempre!\n\n\n\n";
+
+            const payload = {
+                "funcao": "ImprimeTexto",
+                "parametros": {
+                    "text": cupomTexto,
+                    "alinhamento": "ESQUERDA",
+                    "fonte": "NORNAL"
+                }
+            };
+
+            fetch('http://localhost:8080/e1/printer', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            })
+            .then(res => {
+                if (!res.ok) alert("Erro ao enviar comando para a impressora Elgin.");
+            })
+            .catch(err => {
+                console.error(err);
+                alert("Erro de conexão! Verifique se o app E1_IntentDigitalHub está aberto.");
+            });
+        }
+    </script>
 </body>
 </html>

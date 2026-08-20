@@ -4,6 +4,39 @@
     <meta charset="UTF-8">
     <title>Nova Troca</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        .box-troco {
+            background-color: #f8f9fa;
+            border: 1px dashed #ced4da;
+            padding: 12px;
+            border-radius: 8px;
+            margin-top: 10px;
+        }
+        .btn-rapido {
+            background-color: #0d6efd;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            margin-right: 5px;
+            margin-top: 5px;
+        }
+        .btn-rapido:hover {
+            background-color: #0b5ed7;
+        }
+        .display-troco {
+            margin-top: 10px;
+            font-size: 1.1em;
+            font-weight: bold;
+            color: #198754;
+            background-color: #e8f5e9;
+            padding: 8px;
+            border-radius: 5px;
+            text-align: center;
+        }
+    </style>
 </head>
 <body>
 
@@ -89,7 +122,7 @@
 
                 <!-- Bloco Pagamento Único -->
                 <div id="blocoUnico">
-                    <select id="formaPagamento" onchange="monitorarParcelas()" style="width: 100%; padding: 8px; border-radius: 5px; margin-bottom: 10px;">
+                    <select id="formaPagamento" onchange="tratarAlteracaoFormaUnica()" style="width: 100%; padding: 8px; border-radius: 5px; margin-bottom: 10px;">
                         <option value="">Selecione...</option>
                         <option value="Dinheiro">💵 Dinheiro</option>
                         <option value="Pix">📱 Pix</option>
@@ -108,6 +141,19 @@
                             <option value="6">6x sem juros</option>
                         </select>
                     </div>
+
+                    <!-- Troco Unico -->
+                    <div id="boxTrocoUnico" class="box-troco" style="display: none;">
+                        <label style="font-weight: bold; display: block; margin-bottom: 5px;">💵 Valor Entregue em Dinheiro pelo Cliente:</label>
+                        <input type="number" id="valorEntregueUnico" placeholder="0.00" step="0.01" style="width: 100%; padding: 8px; border-radius: 5px;" oninput="calcularTrocoUnico()">
+                        <div>
+                            <button type="button" class="btn-rapido" onclick="setValorEntregueUnico(20)">R$ 20</button>
+                            <button type="button" class="btn-rapido" onclick="setValorEntregueUnico(50)">R$ 50</button>
+                            <button type="button" class="btn-rapido" onclick="setValorEntregueUnico(100)">R$ 100</button>
+                            <button type="button" class="btn-rapido" onclick="setValorEntregueUnico(200)">R$ 200</button>
+                        </div>
+                        <div id="displayTrocoUnico" class="display-troco">💰 Troco: R$ 0.00</div>
+                    </div>
                 </div>
 
                 <!-- Bloco Pagamento Misto -->
@@ -125,6 +171,19 @@
                     </div>
                     <div id="listaPagamentosMistos" style="margin-bottom: 10px;"></div>
                     <strong>Total Informado: <span id="mistoTotalInformado">R$ 0,00</span></strong>
+
+                    <!-- Troco Misto -->
+                    <div id="boxTrocoMisto" class="box-troco" style="display: none;">
+                        <label style="font-weight: bold; display: block; margin-bottom: 5px;">💵 Valor Entregue em Dinheiro pelo Cliente:</label>
+                        <input type="number" id="valorEntregueMisto" placeholder="0.00" step="0.01" style="width: 100%; padding: 8px; border-radius: 5px;" oninput="calcularTrocoMisto()">
+                        <div>
+                            <button type="button" class="btn-rapido" onclick="setValorEntregueMisto(20)">R$ 20</button>
+                            <button type="button" class="btn-rapido" onclick="setValorEntregueMisto(50)">R$ 50</button>
+                            <button type="button" class="btn-rapido" onclick="setValorEntregueMisto(100)">R$ 100</button>
+                            <button type="button" class="btn-rapido" onclick="setValorEntregueMisto(200)">R$ 200</button>
+                        </div>
+                        <div id="displayTrocoMisto" class="display-troco">💰 Troco: R$ 0.00</div>
+                    </div>
                 </div>
             </div>
 
@@ -252,6 +311,7 @@ function atualizarResumo(){
         }
         if(campoPagamento) campoPagamento.style.display = "block"; 
         botao.disabled = false;
+        tratarAlteracaoFormaUnica();
     }
     else {
         resultado.innerText = "✅ Valores iguais";
@@ -274,14 +334,43 @@ document.addEventListener("DOMContentLoaded", function() {
     }
 });
 
-function monitorarParcelas() {
+function tratarAlteracaoFormaUnica() {
     const forma = document.getElementById("formaPagamento").value;
     const divParcelas = document.getElementById("divParcelas");
+    const boxTroco = document.getElementById("boxTrocoUnico");
+
     if (forma === "Cartão de Crédito") {
         divParcelas.style.display = "block";
     } else {
         divParcelas.style.display = "none";
         document.getElementById("parcelas").value = "1";
+    }
+
+    if (forma === "Dinheiro") {
+        boxTroco.style.display = "block";
+        calcularTrocoUnico();
+    } else {
+        boxTroco.style.display = "none";
+    }
+}
+
+function setValorEntregueUnico(valor) {
+    document.getElementById("valorEntregueUnico").value = valor;
+    calcularTrocoUnico();
+}
+
+function calcularTrocoUnico() {
+    const valorFaltante = Math.abs(credito - totalCompra);
+    const entregue = parseFloat(document.getElementById("valorEntregueUnico").value) || 0;
+    const troco = entregue - valorFaltante;
+    const display = document.getElementById("displayTrocoUnico");
+
+    if (troco >= 0) {
+        display.innerText = "💰 Troco: R$ " + troco.toFixed(2);
+        display.style.color = "#198754";
+    } else {
+        display.innerText = "⚠️ Falta R$ " + Math.abs(troco).toFixed(2);
+        display.style.color = "#d32f2f";
     }
 }
 
@@ -319,9 +408,15 @@ function renderizarPagamentosMistos() {
     const lista = document.getElementById('listaPagamentosMistos');
     lista.innerHTML = '';
     let total = 0;
+    let temDinheiro = false;
+    let totalDinheiro = 0;
 
     pagamentosMistos.forEach((p, index) => {
         total += p.valor;
+        if (p.forma === "Dinheiro") {
+            temDinheiro = true;
+            totalDinheiro += p.valor;
+        }
         lista.innerHTML += `
             <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.9em; margin-top: 4px;">
                 <span>${p.forma}: R$ ${p.valor.toFixed(2)}</span>
@@ -331,6 +426,38 @@ function renderizarPagamentosMistos() {
     });
 
     document.getElementById('mistoTotalInformado').innerText = "R$ " + total.toFixed(2);
+
+    const boxTrocoMisto = document.getElementById("boxTrocoMisto");
+    if (temDinheiro) {
+        boxTrocoMisto.style.display = "block";
+        calcularTrocoMisto();
+    } else {
+        boxTrocoMisto.style.display = "none";
+    }
+}
+
+function setValorEntregueMisto(valor) {
+    document.getElementById("valorEntregueMisto").value = valor;
+    calcularTrocoMisto();
+}
+
+function calcularTrocoMisto() {
+    let valorDinheiroMisto = 0;
+    pagamentosMistos.forEach(p => {
+        if (p.forma === "Dinheiro") valorDinheiroMisto += p.valor;
+    });
+
+    const entregue = parseFloat(document.getElementById("valorEntregueMisto").value) || 0;
+    const troco = entregue - valorDinheiroMisto;
+    const display = document.getElementById("displayTrocoMisto");
+
+    if (troco >= 0) {
+        display.innerText = "💰 Troco: R$ " + troco.toFixed(2);
+        display.style.color = "#198754";
+    } else {
+        display.innerText = "⚠️ Falta R$ " + Math.abs(troco).toFixed(2);
+        display.style.color = "#d32f2f";
+    }
 }
 
 function enviarTroca() {
@@ -352,15 +479,41 @@ function enviarTroca() {
                 formaSelect.focus();
                 return;
             }
+
+            if (formaPagamento === "Dinheiro") {
+                const entregue = parseFloat(document.getElementById("valorEntregueUnico").value) || 0;
+                if (entregue < valorFaltante) {
+                    alert(`❌ O valor entregue pelo cliente (R$ ${entregue.toFixed(2)}) é menor que o valor faltante (R$ ${valorFaltante.toFixed(2)})!`);
+                    return;
+                }
+            }
+
             if (formaPagamento === "Cartão de Crédito") {
                 qtdParcelas = parseInt(document.getElementById("parcelas").value || 1);
             }
         } else {
             const totalMisto = pagamentosMistos.reduce((acc, curr) => acc + curr.valor, 0);
-            if (Math.abs(totalMisto - valorFaltante) > 0.05) {
-                alert(`❌ O valor total dos pagamentos mistos (R$ ${totalMisto.toFixed(2)}) deve ser igual ao valor faltante (R$ ${valorFaltante.toFixed(2)})!`);
+            const difMisto = totalMisto - valorFaltante;
+
+            if (Math.abs(difMisto) > 0.01) {
+                if (difMisto > 0) {
+                    alert(`❌ Sobrou R$ ${difMisto.toFixed(2)}! A soma do pagamento misto deve ser EXATAMENTE igual a R$ ${valorFaltante.toFixed(2)}.`);
+                } else {
+                    alert(`❌ Faltou R$ ${Math.abs(difMisto).toFixed(2)}! A soma do pagamento misto deve ser EXATAMENTE igual a R$ ${valorFaltante.toFixed(2)}.`);
+                }
                 return;
             }
+
+            let temDinheiro = pagamentosMistos.some(p => p.forma === "Dinheiro");
+            if (temDinheiro) {
+                let valorDinheiroMisto = pagamentosMistos.filter(p => p.forma === "Dinheiro").reduce((a, b) => a + b.valor, 0);
+                const entregueMisto = parseFloat(document.getElementById("valorEntregueMisto").value) || 0;
+                if (entregueMisto < valorDinheiroMisto) {
+                    alert(`❌ O valor entregue em dinheiro (R$ ${entregueMisto.toFixed(2)}) é menor que o valor alocado em dinheiro (R$ ${valorDinheiroMisto.toFixed(2)})!`);
+                    return;
+                }
+            }
+
             formaPagamento = JSON.stringify(pagamentosMistos);
         }
     }
