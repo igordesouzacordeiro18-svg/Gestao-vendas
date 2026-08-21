@@ -362,7 +362,7 @@ def salvar_nova_senha():
 # ROTAS DE RECUPERAÇÃO DE SENHA VIA E-MAIL
 # =======================================================
 
-# 1. Rota para solicitar o e-mail e enviar o link seguro
+
 @app.route("/esqueci-senha", methods=["GET", "POST"])
 def esqueci_senha():
     if request.method == "POST":
@@ -372,21 +372,38 @@ def esqueci_senha():
             usuario = Usuario.query.filter_by(email=email_digitado).first()
 
             if usuario:
-                token = serializer.dumps(email_digitado, salt="recuperar-senha-salt")
-                link_redefinicao = url_for("redefinir_senha_token", token=token, _external=True)
+                token = serializer.dumps(
+                    email_digitado, salt="recuperar-senha-salt"
+                )
+                link_redefinicao = url_for(
+                    "redefinir_senha_token", token=token, _external=True
+                )
 
-                # Instancia o cliente da API do Brevo
-                api_instance = sib_api_v3_sdk.TransactionalEmailsApi(sib_api_v3_sdk.ApiClient(configuration))
-                
+                # Configuração explícita da API Key do Brevo
+                config_brevo = sib_api_v3_sdk.Configuration()
+                # Garanta que BREVO_API_KEY está no seu os.environ ou coloque sua chave entre aspas aqui
+                config_brevo.api_key["api-key"] = os.getenv("BREVO_API_KEY")
+
+                api_instance = sib_api_v3_sdk.TransactionalEmailsApi(
+                    sib_api_v3_sdk.ApiClient(config_brevo)
+                )
+
                 send_smtp_email = sib_api_v3_sdk.SendSmtpEmail(
                     to=[{"email": email_digitado}],
-                    sender={"name": "Suporte Sistema", "email": "igordesouzacordeiro18@gmail.com"},
+                    sender={
+                        "name": "Suporte Sistema",
+                        "email": "igordesouzacordeiro18@gmail.com",
+                    },
                     subject="🔒 Recuperação de Senha",
                     html_content=f"""
-                        <p>Olá!</p>
-                        <p>Recebemos uma solicitação para redefinir sua senha.</p>
-                        <p><a href="{link_redefinicao}">Clique aqui para redefinir sua senha</a> (Válido por 15 min)</p>
-                    """
+                        <div style="font-family: Arial, sans-serif; padding: 20px;">
+                            <h2>Recuperação de Senha</h2>
+                            <p>Olá!</p>
+                            <p>Recebemos uma solicitação para redefinir a senha do seu usuário.</p>
+                            <p><a href="{link_redefinicao}" style="background-color: #007bff; color: white; padding: 10px 15px; text-decoration: none; border-radius: 4px; display: inline-block;">Clique aqui para redefinir sua senha</a></p>
+                            <p><small>Este link é válido por 15 minutos.</small></p>
+                        </div>
+                    """,
                 )
 
                 api_response = api_instance.send_transac_email(send_smtp_email)
@@ -394,12 +411,14 @@ def esqueci_senha():
 
         except ApiException as e:
             db.session.rollback()
-            print(f"❌ ERRO BREVO API: {e}")
+            print(f"❌ ERRO BREVO API (Verifique sua chave e remetente): {e}")
         except Exception as e:
             db.session.rollback()
-            print(f"❌ ERRO GERAL: {e}")
+            print(f"❌ ERRO GERAL NO ENVIO DE E-MAIL: {e}")
 
-        flash("Se o e-mail estiver cadastrado em nosso sistema, você receberá as instruções em instantes.")
+        flash(
+            "Se o e-mail estiver cadastrado em nosso sistema, você receberá as instruções em instantes."
+        )
         return redirect(url_for("login"))
 
     return render_template("esqueci_senha.html")
